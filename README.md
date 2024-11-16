@@ -17,8 +17,9 @@
 |                      Auto Referral                       |     ✅     |
 |                Automatic joining to squad                |     ✅     |
 |                       AutoTapper                         |     ✅     |
-|              Auto play games (Flappy and Dino)           |     ✅     |
-|                       Auto Tasks                         |     ✅     |
+|                       AutoSpins                          |     ✅     |
+|              AutoPlay games (Flappy and Dino)            |     ✅     |
+|                       AutoTasks                          |     ✅     |
 |                       WebSockets                         |     ✅     |
 |              Support for pyrogram .session               |     ✅     |
 
@@ -32,6 +33,7 @@
 |      **SQUAD_NAME**         |               @username of the squad channel/chat without the '@' symbol            |
 |        **REF_ID**           |                         Text after 'start=' in your referral link                   |
 |       **AUTO_TASKS**        |                        Automatically performs tasks (default - False)               |
+|  **AUTO_CLAIM_REF_REWARD**  |                             Name saying itself (default - True)                     |
 | **USE_RANDOM_DELAY_IN_RUN** |                             Name saying itself (default - True)                     |
 |   **RANDOM_DELAY_IN_RUN**   |                     Random seconds delay for ^^^ (default is [5, 30])               |
 |       **NIGHT_MODE**        |               Pauses operations from 22:00 to 06:00 UTC (default - False)           |
