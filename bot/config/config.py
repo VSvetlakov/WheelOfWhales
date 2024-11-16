@@ -15,7 +15,9 @@ class Settings(BaseSettings):
 
     REF_ID: str = 'CGYJGk91pub'
 
-    AUTO_TASKS: bool = False
+    AUTO_TASKS: bool = True
+
+    AUTO_CLAIM_REF_REWARD: bool = True
 
     USE_RANDOM_DELAY_IN_RUN: bool = True
     RANDOM_DELAY_IN_RUN: list[int] = [5, 30]

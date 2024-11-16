@@ -813,7 +813,6 @@ class Tapper:
             'FOLLOW_WHEEL_OF_WHALES': self.verify,
             'FOLLOW_TON_NEWS': self.verify,
             'FOLLOW_WHALE_SPORTS': self.verify,
-            'SHARE_TO_STORY': self.verify,
             'FOLLOW_WHALE_DISCORD': self.verify,
             'FOLLOW_WHALE_YT': self.verify,
             'FOLLOW_WHALE_MEMES': self.verify,
@@ -822,29 +821,33 @@ class Tapper:
             'FOLLOW_WHALE_X': self.verify,
             'FOLLOW_WHALE_SOCIALS': self.verify,
             'FOLLOW_WHALE_KICK': self.verify,
-            'ROOLZ': self.verify,
+            'SHARE_TO_STORY': self.verify,
             'DOWNLOAD_WALLET': self.verify,
             'LIKE_RETWEET': self.verify,
             'BITS': self.verify,
             'BOOM': self.verify,
             'DEJEN_DOG': self.verify,
-            'DUCKS': self.verify,
-            'TON_KOMBAT': self.verify,
             'OWLS': self.verify,
-            'CLAYTON': self.verify
+            'SPORTS_MANIA': self.verify,
+            'CRYPTO_HUB': self.verify,
+            'AI_POST': self.verify,
+            'STORM_TRADE': self.verify,
+            'STORM_BOT': self.verify,
+            'DEPIN': self.verify,
+            'RIVER_LAND': self.verify
         }
 
-        codes = {
-            'CODE_VERIFY_redwhale': 'REDWHALE'
-        }
+        # codes = {
+            # 'CODE_VERIFY_redwhale': 'REDWHALE'
+        # }
 
         for task in methods.keys():
             if task not in tasks or not tasks[task]:
                 await methods[task](task, http_client, proxy)
 
-        for task, code in codes.items():
-            if task not in tasks or not tasks[task]:
-                await self.verify_code(code, http_client, proxy)
+        # for task, code in codes.items():
+            # if task not in tasks or not tasks[task]:
+                # await self.verify_code(code, http_client, proxy)
 
     async def verify(self, task, http_client, proxy): 
         try:
@@ -989,6 +992,58 @@ class Tapper:
             logger.error(f"<light-yellow>{self.session_name}</light-yellow> | 🚫 <red>Error</red> joining squad {squad_name}: {error}")
             return None
 
+    async def claim_ref(self, http_client, proxy=None):
+        try:
+            scraper = cloudscraper.create_scraper()
+            proxies = {
+                'http': proxy,
+                'https': proxy,
+            } if proxy else None
+
+            headers = {
+                'Accept': 'application/json, text/plain, */*',
+                'Accept-Encoding': 'gzip, deflate, br, zstd',
+                'Accept-Language': 'ru-RU,ru;q=0.9',
+                'Origin': 'https://clicker.crashgame247.io',
+                'Referer': 'https://clicker.crashgame247.io/',
+                "Authorization": http_client.headers.get('Authorization'),
+                "User-Agent": http_client.headers.get('User-Agent')
+            }
+
+            while True:
+                response = scraper.get(f"{self.url}/user/invitations", headers=headers, proxies=proxies)
+                
+                if response.status_code != 200:
+                    await asyncio.sleep(300)
+                    continue
+
+                data = response.json()
+                amount = data.get("reward", {}).get("amount", 0)
+                
+                if amount > 0:
+                    await asyncio.sleep(random.uniform(5, 10))
+
+                    claim = scraper.post(
+                        f"{self.url}/user/invitations/claim",
+                        headers=headers,
+                        proxies=proxies
+                    )
+
+                    if claim.status_code == 200:
+                        reward_data = claim.json()
+                        claimed = reward_data.get("rewardAmount")
+                        logger.info(f"✅ <green>Successfully claimed</green> ref reward. <light-yellow>+{claimed}</light-yellow>")
+                    else:
+                        logger.error(f"🚫 <red>Error</red> claiming ref reward: {claim.status_code}, {claim.text}")
+                else:
+                    pass
+
+                sleep = random.uniform(1.5, 2) * 24 * 60 * 60
+                await asyncio.sleep(sleep)
+
+        except Exception as e:
+            logger.error(f"<light-yellow>{self.session_name}</light-yellow> | 🚫 <red>Error:</red> {e} (claim_ref)")
+
     async def run(self, proxy: str | None) -> None:
         if settings.USE_RANDOM_DELAY_IN_RUN:
             random_delay = random.randint(settings.RANDOM_DELAY_IN_RUN[0], settings.RANDOM_DELAY_IN_RUN[1])
@@ -1082,6 +1137,9 @@ class Tapper:
 
         if settings.AUTO_TASKS:
             await self.complete_tasks(tasks, http_client, proxy)
+
+        if settings.AUTO_CLAIM_REF_REWARD:
+            asyncio.create_task(self.claim_ref(proxy=proxy, http_client=http_client))
 
         while True:
             try:
