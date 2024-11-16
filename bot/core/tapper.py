@@ -1019,7 +1019,16 @@ class Tapper:
 
                 data = response.json()
                 amount = data.get("reward", {}).get("amount", 0)
-                
+                next_claim_timestamp = data.get("reward", {}).get("nextClaimTimestamp", 0)
+
+                next_claim_time = datetime.utcfromtimestamp(next_claim_timestamp)
+                current_time = datetime.utcnow()
+
+                if next_claim_time > current_time:
+                    wait_time = (next_claim_time - current_time).total_seconds()
+                    await asyncio.sleep(wait_time)
+                    continue
+
                 if amount > 0:
                     await asyncio.sleep(random.uniform(5, 10))
 
