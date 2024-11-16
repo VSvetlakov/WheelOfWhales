@@ -1032,9 +1032,9 @@ class Tapper:
                     if claim.status_code == 200:
                         reward_data = claim.json()
                         claimed = reward_data.get("rewardAmount")
-                        logger.info(f"✅ <green>Successfully claimed</green> ref reward. <light-yellow>+{claimed}</light-yellow>")
+                        logger.info(f"<light-yellow>{self.session_name}</light-yellow> | ✅ <green>Successfully claimed</green> ref reward. <light-yellow>+{claimed}</light-yellow>")
                     else:
-                        logger.error(f"🚫 <red>Error</red> claiming ref reward: {claim.status_code}, {claim.text}")
+                        logger.error(f"<light-yellow>{self.session_name}</light-yellow> | 🚫 <red>Error</red> claiming ref reward: {claim.status_code}, {claim.text}")
                 else:
                     pass
 
