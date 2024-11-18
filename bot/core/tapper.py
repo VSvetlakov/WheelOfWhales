@@ -837,17 +837,17 @@ class Tapper:
             'RIVER_LAND': self.verify
         }
 
-        # codes = {
-            # 'CODE_VERIFY_redwhale': 'REDWHALE'
-        # }
+        codes = {
+            'STREAM_discoball': 'DISCOBALL'
+        }
 
         for task in methods.keys():
             if task not in tasks or not tasks[task]:
                 await methods[task](task, http_client, proxy)
 
-        # for task, code in codes.items():
-            # if task not in tasks or not tasks[task]:
-                # await self.verify_code(code, http_client, proxy)
+        for task, code in codes.items():
+            if task not in tasks or not tasks[task]:
+                await self.verify_code(code, http_client, proxy)
 
     async def verify(self, task, http_client, proxy): 
         try:
@@ -919,7 +919,7 @@ class Tapper:
                 'Content-Type': 'application/json'
             }
 
-            url = f'{self.url}/meta/tasks/CODE_VERIFY'
+            url = f'{self.url}/meta/tasks/STREAM'
 
             scraper = cloudscraper.create_scraper()
 
