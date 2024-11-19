@@ -838,7 +838,7 @@ class Tapper:
         }
 
         codes = {
-            'STREAM_discoball': 'DISCOBALL'
+            'FIND_CODE_slay': 'slay'
         }
 
         for task in methods.keys():
@@ -919,7 +919,7 @@ class Tapper:
                 'Content-Type': 'application/json'
             }
 
-            url = f'{self.url}/meta/tasks/STREAM'
+            url = f'{self.url}/meta/tasks/FIND_CODE'
 
             scraper = cloudscraper.create_scraper()
 
