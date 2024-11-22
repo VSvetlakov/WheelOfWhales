@@ -1177,7 +1177,7 @@ class Tapper:
 
             except Exception as error:
                 logger.error(f"{self.session_name} | 🚫 Unknown <red>error</red>: {error} (Try restarting the bot..)")
-                await asyncio.sleep(3)
+                await asyncio.sleep(300)
 
 async def run_tapper(tg_client: Client, proxy: str | None):
     try:
