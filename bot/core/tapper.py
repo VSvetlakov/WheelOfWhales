@@ -838,7 +838,7 @@ class Tapper:
         }
 
         codes = {
-            'FIND_CODE_slay': 'slay'
+            'FIND_CODE_tokenflip': 'tokenflip'
         }
 
         for task in methods.keys():
