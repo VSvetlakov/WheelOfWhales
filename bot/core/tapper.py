@@ -834,7 +834,15 @@ class Tapper:
             'STORM_TRADE': self.verify,
             'STORM_BOT': self.verify,
             'DEPIN': self.verify,
-            'RIVER_LAND': self.verify
+            'RIVER_LAND': self.verify,
+            'CRYP': self.verify,
+            'BOOL_BOT': self.verify,
+            'BOOL_CHANNEL': self.verify,
+            'TRADE': self.verify,
+            'TELEVERSE': self.verify,
+            'TON_TON': self.verify,
+            'KINGYRU': self.verify,
+            'W_COIN': self.verify
         }
 
         codes = {
