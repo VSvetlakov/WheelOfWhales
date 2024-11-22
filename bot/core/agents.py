@@ -136,6 +136,65 @@ existing_versions = {
     ]
 }
 
+devices = [
+    ('Samsung', 'SM-G980F', 'AVERAGE', 10),
+    ('Samsung', 'SM-G973F', 'AVERAGE', 9),
+    ('Samsung', 'SM-G973U', 'AVERAGE', 9),
+    ('Samsung', 'SM-N986B', 'AVERAGE', 11),
+    ('Samsung', 'SM-N981B', 'AVERAGE', 11),
+    ('Samsung', 'SM-F916B', 'AVERAGE', 11),
+    ('Samsung', 'SM-G998B', 'HIGH', 12),
+    ('Samsung', 'SM-G991B', 'HIGH', 12),
+    ('Samsung', 'SM-G996B', 'HIGH', 12),
+    ('Samsung', 'SM-G990E', 'HIGH', 12),
+    ('Samsung', 'SM-G990B', 'HIGH', 12),
+    ('Samsung', 'SM-G990B2', 'HIGH', 12),
+    ('Samsung', 'SM-G990U', 'HIGH', 12),
+    ('Google', 'Pixel 5', 'AVERAGE', 11),
+    ('Google', 'Pixel 5a', 'AVERAGE', 11),
+    ('Google', 'Pixel 6', 'AVERAGE', 12),
+    ('Google', 'Pixel 6 Pro', 'AVERAGE', 12),
+    ('Google', 'Pixel 6 XL', 'AVERAGE', 12),
+    ('Google', 'Pixel 6a', 'AVERAGE', 12),
+    ('Google', 'Pixel 7', 'HIGH', 13),
+    ('Google', 'Pixel 7a', 'AVERAGE', 13),
+    ('Google', 'Pixel 7 Pro', 'HIGH', 13),
+    ('Google', 'Pixel 8', 'HIGH', 14),
+    ('Google', 'Pixel 8a', 'HIGH', 14),
+    ('Google', 'Pixel 8 Pro', 'HIGH', 14),
+    ('Google', 'Pixel 9', 'HIGH', 14),
+    ('Google', 'Pixel 9 Pro', 'HIGH', 14),
+    ('Google', 'Pixel 9 Pro XL', 'HIGH', 14),
+    ('Xiaomi', 'Mi 10', 'AVERAGE', 10),
+    ('Xiaomi', 'Mi 11', 'AVERAGE', 11),
+    ('Xiaomi', 'Mi 12', 'HIGH', 12),
+    ('Xiaomi', 'Redmi Note 10', 'HIGH', 11),
+    ('Xiaomi', 'Redmi Note 10 Pro', 'HIGH', 11),
+    ('Xiaomi', 'Redmi Note 11', 'HIGH', 12),
+    ('Xiaomi', 'Redmi Note 11 Pro', 'HIGH', 12),
+    ('Xiaomi', 'Redmi Note 12', 'HIGH', 13),
+    ('Xiaomi', 'Redmi Note 12 Pro', 'HIGH', 13),
+    ('Xiaomi', 'POCO M3 Pro', 'HIGH', 11),
+    ('Xiaomi', 'POCO X5', 'HIGH', 12),
+    ('Xiaomi', 'POCO X5 Pro', 'HIGH', 12),
+    ('Xiaomi', 'POCO X6 Pro', 'HIGH', 13),
+    ('Xiaomi', 'POCO F4', 'HIGH', 12),
+    ('Xiaomi', 'POCO F4 GT', 'HIGH', 12),
+    ('Xiaomi', 'POCO F3', 'HIGH', 11),
+    ('OnePlus', 'NE2215', 'AVERAGE', 12),
+    ('OnePlus', 'NE2210', 'AVERAGE', 12),
+    ('OnePlus', 'IN2010', 'AVERAGE', 10),
+    ('OnePlus', 'IN2023', 'AVERAGE', 11),
+    ('OnePlus', 'LE2117', 'AVERAGE', 11),
+    ('OnePlus', 'LE2123', 'AVERAGE', 11),
+    ('OnePlus', 'CPH2423', 'AVERAGE', 12),
+    ('Huawei', 'VOG-AL00', 'AVERAGE', 9),
+    ('Huawei', 'ANA-AL00', 'AVERAGE', 10),
+    ('Huawei', 'TAS-AL00', 'AVERAGE', 10),
+    ('Huawei', 'OCE-AN10', 'AVERAGE', 11),
+    ('Sony', 'J9150', 'AVERAGE', 9),
+    ('Sony', 'J9210', 'AVERAGE', 10)
+]
 
 def generate_random_user_agent(device_type='android', browser_type='chrome'):
     firefox_versions = list(range(100, 127))  # Last 10 versions of Firefox
@@ -147,30 +206,36 @@ def generate_random_user_agent(device_type='android', browser_type='chrome'):
         browser_version = random.choice(firefox_versions)
 
     if device_type == 'android':
-        android_versions = ['7.0', '7.1', '8.0', '8.1', '9.0', '10.0', '11.0', '12.0', '13.0', '14.0', '15.0']
-        android_device = random.choice([
-            'SM-G960F', 'SM-G973F', 'SM-G980F', 'SM-G960U', 'SM-G973U', 'SM-G980U',
-            'SM-A505F', 'SM-A515F', 'SM-A525F', 'SM-N975F', 'SM-N986B', 'SM-N981B',
-            'SM-F711B', 'SM-F916B', 'SM-G781B', 'SM-G998B', 'SM-G991B', 'SM-G996B',
-            'SM-G990E', 'SM-G990B2', 'SM-G990U', 'SM-G990B', 'SM-G990', 'SM-G990',
-            'Pixel 2', 'Pixel 2 XL', 'Pixel 3', 'Pixel 3 XL', 'Pixel 4', 'Pixel 4 XL',
-            'Pixel 4a', 'Pixel 5', 'Pixel 5a', 'Pixel 6', 'Pixel 6 Pro', 'Pixel 6 XL',
-            'Pixel 6a', 'Pixel 7', 'Pixel 7 Pro', 'IN2010', 'IN2023',
-            'LE2117', 'LE2123', 'OnePlus Nord', 'IV2201', 'NE2215', 'CPH2423',
-            'NE2210', 'Mi 9', 'Mi 10', 'Mi 11', 'Mi 12', 'Redmi Note 8',
-            'Redmi Note 8 Pro', 'Redmi Note 9', 'Redmi Note 9 Pro', 'Redmi Note 10',
-            'Redmi Note 10 Pro', 'Redmi Note 11', 'Redmi Note 11 Pro', 'Redmi Note 12',
-            'Redmi Note 12 Pro', 'VOG-AL00', 'ANA-AL00', 'TAS-AL00',
-            'OCE-AN10', 'J9150', 'J9210', 'LM-G820', 'L-51A', 'Nokia 8.3',
-            'Nokia 9 PureView', 'POCO F5', 'POCO F5 Pro', 'POCO M3', 'POCO M3 Pro'
-        ])
-        android_version = random.choice(android_versions)
+        android_versions = {
+            '10': 29,
+            '11': 30,
+            '12': 31,
+            '13': 33,
+            '14': 34
+        }
+
+        manufacturer, model, performance_class, min_android_version = random.choice(devices)
+        android_version = str(random.choice([v for v in android_versions.keys() if int(v) >= min_android_version]))
+        sdk_version = android_versions[android_version]
+
         if browser_type == 'chrome':
-            return (f"Mozilla/5.0 (Linux; Android {android_version}; {android_device}) AppleWebKit/537.36 "
-                    f"(KHTML, like Gecko) Chrome/{browser_version} Mobile Safari/537.36")
+            major_version = random.choice(list(existing_versions.keys()))
+            browser_version = random.choice(existing_versions[major_version])
+        elif browser_type == 'firefox':
+            browser_version = random.choice(firefox_versions)
+
+        telegram_version = "11.4.2"
+
+        if browser_type == 'chrome':
+            return (f"Mozilla/5.0 (Linux; Android {android_version}; {model}) AppleWebKit/537.36 "
+                    f"(KHTML, like Gecko) Chrome/{browser_version} Mobile Safari/537.36 "
+                    f"Telegram-Android/{telegram_version} ({manufacturer} {model}; Android {android_version}; "
+                    f"SDK {sdk_version}; {performance_class})")
         elif browser_type == 'firefox':
             return (f"Mozilla/5.0 (Android {android_version}; Mobile; rv:{browser_version}.0) "
-                    f"Gecko/{browser_version}.0 Firefox/{browser_version}.0")
+                    f"Gecko/{browser_version}.0 Firefox/{browser_version}.0 "
+                    f"Telegram-Android/{telegram_version} ({manufacturer} {model}; Android {android_version}; "
+                    f"SDK {sdk_version}; {performance_class})")
 
     elif device_type == 'ios':
         ios_versions = ['13.0', '14.0', '15.0', '16.0', '17.0', '18.0']
