@@ -1130,7 +1130,8 @@ class Tapper:
             await asyncio.sleep(random_delay)
 
         if settings.FREE_SPINS_NOTIFICATIONS:
-            await self.bot_client.start()
+            if not self.bot_client.is_connected:
+                await self.bot_client.start()
 
         proxy_conn = ProxyConnector().from_url(proxy) if proxy else None
         http_client = CloudflareScraper(headers=headers, connector=proxy_conn)
