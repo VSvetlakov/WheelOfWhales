@@ -30,7 +30,7 @@ class Settings(BaseSettings):
 
     NOTIFICATIONS_BOT_TOKEN: str = ''
 
-    ADMIN_TG_USER_ID: int = ''
+    ADMIN_TG_USER_ID: int = 0
 
     DEBUG: bool = False
 
