@@ -26,6 +26,12 @@ class Settings(BaseSettings):
 
     USE_PROXY_FROM_FILE: bool = False
 
+    FREE_SPINS_NOTIFICATIONS: bool = False
+
+    NOTIFICATIONS_BOT_TOKEN: str = ''
+
+    ADMIN_TG_USER_ID: int = ''
+
     DEBUG: bool = False
 
 

@@ -13,7 +13,7 @@ from better_proxy import Proxy
 from urllib.parse import unquote
 
 from faker import Faker
-from pyrogram import Client
+from pyrogram import Client, enums
 from pyrogram.errors import Unauthorized, UserDeactivated, AuthKeyUnregistered, FloodWait
 from pyrogram.raw.functions.messages import RequestWebView
 from datetime import datetime, timedelta, timezone
@@ -44,6 +44,10 @@ class Tapper:
         self.user_data = self.load_user_data()
 
         headers['User-Agent'] = self.check_user_agent()
+
+        bot_token = settings.NOTIFICATIONS_BOT_TOKEN if settings.NOTIFICATIONS_BOT_TOKEN != '' else False
+        if bot_token:
+            self.bot_client = Client("notifications_bot", api_id=settings.API_ID, api_hash=settings.API_HASH, bot_token=bot_token)
 
     async def generate_random_user_agent(self):
         return generate_random_user_agent(device_type='android', browser_type='chrome')
@@ -223,6 +227,52 @@ class Tapper:
         except Exception as error:
             logger.error(f"<light-yellow>{self.session_name}</light-yellow> | 🚫 Unknown <red>error</red> during Authorization: {error}")
             await asyncio.sleep(3)
+
+    async def get_whale_link(self) -> None:
+        with_tg = True
+
+        if not self.tg_client.is_connected:
+            with_tg = False
+            await self.tg_client.connect()
+            start_command_found = False
+
+            async for message in self.tg_client.get_chat_history("whale"):
+                if (message.text and message.text.startswith("/start")) or (message.caption and message.caption.startswith("/start")):
+                    start_command_found = True
+                    break
+
+            if start_command_found:
+                self.user_data["registered_in_@whale"] = True
+                self.save_user_data()
+            else:
+                await self.tg_client.send_message("whale", f"/start 3c54274715e2b661")
+
+        while True:
+            try:
+                peer = await self.tg_client.resolve_peer('whale')
+                break
+            except FloodWait as fl:
+                fls = fl.value
+
+                logger.warning(f"{self.session_name} | 😞 FloodWait <red>{fl}</red>")
+                logger.info(f"{self.session_name} | 😴 Sleep <light-cyan>{fls}s</light-cyan>")
+
+                await asyncio.sleep(fls + 3)
+
+        web_view = await self.tg_client.invoke(RequestWebView(
+            peer=peer,
+            bot=peer,
+            platform='android',
+            from_bot_menu=False,
+            url="https://api.crashgame247.io/url"
+        ))
+
+        auth_url = web_view.url
+
+        if with_tg is False:
+            await self.tg_client.disconnect()
+
+        return auth_url
 
     async def check_proxy(self, http_client: aiohttp.ClientSession, proxy: Proxy) -> None:
         try:
@@ -548,6 +598,12 @@ class Tapper:
                 elif opens_game == "whale_free_spin":
                     logger.info(f"<light-yellow>{self.session_name}</light-yellow> | 🐋 WhaleSpin Result: <blue>5 Free Spins</blue> awarded in @whale")
                     await self.save_result("🐋 5 Free Spins awarded in @whale")
+                    if settings.FREE_SPINS_NOTIFICATIONS:
+                        link = await self.get_whale_link()
+                        message = (f"<b>👤@{self.username} (ID: </b><code>{self.user_id}</code><b>)</b>\n"
+                                f"<i>🎁 I won free spins at @whale, to get them, click here 👇</i>\n\n"
+                                f"🐳 <b><a href='{link}'>Link to enter @whale for the session {self.session_name}</a></b>")
+                        await self.send_notification(message)
                 else:
                     logger.warning(f"<light-yellow>{self.session_name}</light-yellow> | ❓ WhaleSpin Result: Unknown result type '{opens_game}' detected")
 
@@ -1061,11 +1117,20 @@ class Tapper:
         except Exception as e:
             logger.error(f"<light-yellow>{self.session_name}</light-yellow> | 🚫 <red>Error:</red> {e} (claim_ref)")
 
+    async def send_notification(self, message):
+        admin = settings.ADMIN_TG_USER_ID if settings.ADMIN_TG_USER_ID != '' else None
+        if admin:
+            self.bot_client.set_parse_mode(enums.ParseMode.HTML)
+            await self.bot_client.send_message(admin, message, disable_web_page_preview=True)
+
     async def run(self, proxy: str | None) -> None:
         if settings.USE_RANDOM_DELAY_IN_RUN:
             random_delay = random.randint(settings.RANDOM_DELAY_IN_RUN[0], settings.RANDOM_DELAY_IN_RUN[1])
             logger.info(f"<light-yellow>{self.session_name}</light-yellow> | ⏳ Bot will start in <ly>{random_delay}s</ly>")
             await asyncio.sleep(random_delay)
+
+        if settings.FREE_SPINS_NOTIFICATIONS:
+            await self.bot_client.start()
 
         proxy_conn = ProxyConnector().from_url(proxy) if proxy else None
         http_client = CloudflareScraper(headers=headers, connector=proxy_conn)
@@ -1115,6 +1180,9 @@ class Tapper:
             if referrer:
                 logger.success(f"<light-yellow>{self.session_name}</light-yellow> | 🤗 Referred By: @{referrer}")
 
+        if not self.user_data.get("registered_in_@whale"):
+            await self.get_whale_link()
+
         if settings.NIGHT_MODE:
             current_time = datetime.now(timezone.utc).time()
             night_start = datetime.strptime("22:00", "%H:%M").time()
@@ -1148,12 +1216,12 @@ class Tapper:
                             else:
                                 logger.error(f"<light-yellow>{self.session_name}</light-yellow> | 😔 <red>Failed</red> to join squad: {squad_name}")
 
+        if settings.AUTO_TASKS:
+            await self.complete_tasks(tasks, http_client, proxy)
+
         if settings.AUTO_TAP:
             logger.info(f"<light-yellow>{self.session_name}</light-yellow> | 😋 Starting <green>AutoTapper...</green>")
             asyncio.create_task(self.clicker(proxy=proxy, http_client=http_client))
-
-        if settings.AUTO_TASKS:
-            await self.complete_tasks(tasks, http_client, proxy)
 
         if settings.AUTO_CLAIM_REF_REWARD:
             asyncio.create_task(self.claim_ref(proxy=proxy, http_client=http_client))
