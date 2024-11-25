@@ -13,11 +13,12 @@ from better_proxy import Proxy
 from urllib.parse import unquote
 
 from faker import Faker
-from pyrogram import Client, enums
+from pyrogram import Client
 from pyrogram.errors import Unauthorized, UserDeactivated, AuthKeyUnregistered, FloodWait
 from pyrogram.raw.functions.messages import RequestWebView
 from datetime import datetime, timedelta, timezone
 import brotli
+import requests
 
 from bot.config import settings
 from bot.utils import logger
@@ -44,10 +45,6 @@ class Tapper:
         self.user_data = self.load_user_data()
 
         headers['User-Agent'] = self.check_user_agent()
-
-        bot_token = settings.NOTIFICATIONS_BOT_TOKEN if settings.NOTIFICATIONS_BOT_TOKEN != '' else False
-        if bot_token:
-            self.bot_client = Client("notifications_bot", api_id=settings.API_ID, api_hash=settings.API_HASH, bot_token=bot_token)
 
     async def generate_random_user_agent(self):
         return generate_random_user_agent(device_type='android', browser_type='chrome')
@@ -890,7 +887,6 @@ class Tapper:
             'STORM_TRADE': self.verify,
             'STORM_BOT': self.verify,
             'DEPIN': self.verify,
-            'RIVER_LAND': self.verify,
             'CRYP': self.verify,
             'BOOL_BOT': self.verify,
             'BOOL_CHANNEL': self.verify,
@@ -1119,19 +1115,32 @@ class Tapper:
 
     async def send_notification(self, message):
         admin = settings.ADMIN_TG_USER_ID if settings.ADMIN_TG_USER_ID != '' else None
-        if admin:
-            self.bot_client.set_parse_mode(enums.ParseMode.HTML)
-            await self.bot_client.send_message(admin, message, disable_web_page_preview=True)
+        bot_token = settings.NOTIFICATIONS_BOT_TOKEN if settings.NOTIFICATIONS_BOT_TOKEN else None
+        
+        if bot_token and admin:
+            url = f"https://api.telegram.org/bot{bot_token}/sendMessage"
+            json = {
+                "chat_id": admin,
+                "text": message,
+                "parse_mode": "HTML",
+                "disable_web_page_preview": True
+            }
+
+            try:
+                async with aiohttp.ClientSession() as session:
+                    async with session.post(url, json=json) as response:
+                        if response.status == 200:
+                            pass
+                        else:
+                            logger.error(f'<light-yellow>{self.session_name}</light-yellow> | ❌ Failed to send notification: {response.status}')
+            except Exception as e:
+                logger.error(f'<light-yellow>{self.session_name}</light-yellow> | ❌ Error sending notification: {e}')
 
     async def run(self, proxy: str | None) -> None:
         if settings.USE_RANDOM_DELAY_IN_RUN:
             random_delay = random.randint(settings.RANDOM_DELAY_IN_RUN[0], settings.RANDOM_DELAY_IN_RUN[1])
             logger.info(f"<light-yellow>{self.session_name}</light-yellow> | ⏳ Bot will start in <ly>{random_delay}s</ly>")
             await asyncio.sleep(random_delay)
-
-        if settings.FREE_SPINS_NOTIFICATIONS:
-            if not self.bot_client.is_connected:
-                await self.bot_client.start()
 
         proxy_conn = ProxyConnector().from_url(proxy) if proxy else None
         http_client = CloudflareScraper(headers=headers, connector=proxy_conn)
