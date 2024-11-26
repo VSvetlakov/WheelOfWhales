@@ -1,43 +1,41 @@
+[![PYTHON 3.10](https://img.shields.io/badge/-PYTHON%203.10-black?style=for-the-badge&logo=python&logoColor=white)](https://www.python.org/downloads/release/python-3100/)
 [![CHANNEL](https://img.shields.io/badge/-CHANNEL-black?style=for-the-badge&logo=telegram&logoColor=white)](https://t.me/hidden_coding)
 [![CHAT](https://img.shields.io/badge/-CHAT-black?style=for-the-badge&logo=telegram&logoColor=white)](https://t.me/hidden_codding_chat)
 [![BOT LINK](https://img.shields.io/badge/-BOT%20LINK-black?style=for-the-badge&logo=telegram&logoColor=white)](https://t.me/wheelofwhalesbot?start=CGYJGk91pub)
 [![BOT MARKET](https://img.shields.io/badge/-BOT%20MARKET-black?style=for-the-badge&logo=telegram&logoColor=white)](https://t.me/hcmarket_bot?start=referral_5143703753)
 
-## Recommendation before use
+## ✨ Features  
+|Feature|Supported|
+|:-----:|:-------:|
+|Multithreading|✅|
+|Proxy binding to session|✅|
+|Auto Referral|✅|
+|Automatic joining to squad|✅|
+|AutoTapper|✅|
+|Automatic wheel spinning|✅|
+|AutoPlay games (Flappy and Dino)|✅|
+|AutoTasks|✅|
+|WebSockets|✅|
+|Support for pyrogram .session|✅|
 
-# 🔥🔥 PYTHON version must be 3.10 🔥🔥
-
-> 🇷 🇺 README in russian available [here](README-RU.md)
-
-## Features  
-|                         Feature                          | Supported |
-|:--------------------------------------------------------:|:---------:|
-|                      Multithreading                      |     ✅     |
-|                 Proxy binding to session                 |     ✅     |
-|                      Auto Referral                       |     ✅     |
-|                Automatic joining to squad                |     ✅     |
-|                       AutoTapper                         |     ✅     |
-|                       AutoSpins                          |     ✅     |
-|              AutoPlay games (Flappy and Dino)            |     ✅     |
-|                       AutoTasks                          |     ✅     |
-|                       WebSockets                         |     ✅     |
-|              Support for pyrogram .session               |     ✅     |
-
-## [Settings](https://github.com/yummy1gay/WheelOfWhales/blob/main/.env-example/)
-|         Settings            |                                     Description                                     |
-|:---------------------------:|:-----------------------------------------------------------------------------------:|
-|        **API_ID**           |           Platform data from which to run the Telegram session (default - android)  |
-|       **API_HASH**          |           Platform data from which to run the Telegram session (default - android)  |
-|       **AUTO_TAP**          |                      Automatic clicking (default - True)                            |
-|        **SCORE**            |                 Score per game (default is [5, 30] (That is, 5 to 30))              |
-|      **SQUAD_NAME**         |               @username of the squad channel/chat without the '@' symbol            |
-|        **REF_ID**           |                         Text after 'start=' in your referral link                   |
-|       **AUTO_TASKS**        |                        Automatically performs tasks (default - False)               |
-|  **AUTO_CLAIM_REF_REWARD**  |                             Name saying itself (default - True)                     |
-| **USE_RANDOM_DELAY_IN_RUN** |                             Name saying itself (default - True)                     |
-|   **RANDOM_DELAY_IN_RUN**   |                     Random seconds delay for ^^^ (default is [5, 30])               |
-|       **NIGHT_MODE**        |               Pauses operations from 22:00 to 06:00 UTC (default - False)           |
-| **USE_PROXY_FROM_FILE**     |      Whether to use a proxy from the `bot/config/proxies.txt` file (True / False)   |
+## ⚙️ [Settings](https://github.com/yummy1gay/WheelOfWhales/blob/main/.env-example/)
+|Settings|Description|
+|:------:|:---------:|
+|**API_ID**|Platform data from which to run the Telegram session (default - android)|
+|**API_HASH**|Platform data from which to run the Telegram session (default - android)|
+|**AUTO_TAP**|Automatic clicking (default - True)|
+|**SCORE**|Score per game (default is [5, 30] (That is, 5 to 30))|
+|**SQUAD_NAME**|@username of the squad channel/chat without the '@' symbol|
+|**REF_ID**|Text after 'start=' in your referral link|
+|**AUTO_TASKS**|Automatically performs tasks (default - False)|
+|**AUTO_CLAIM_REF_REWARD**|Name saying itself (default - True)|
+|**USE_RANDOM_DELAY_IN_RUN**|Name saying itself (default - True)|
+|**RANDOM_DELAY_IN_RUN**|Random seconds delay for ^^^ (default is [5, 30])|
+|**NIGHT_MODE**|Pauses operations from 22:00 to 06:00 UTC (default - False)|
+| **USE_PROXY_FROM_FILE**|Whether to use a proxy from the `bot/config/proxies.txt` file (True / False)|
+| **FREE_SPINS_NOTIFICATIONS**|Sends notifications about free spins won in the wheels. The notification also provides a link to log into the @whale session account (this feature allows you to access @whale on the account where the spins were won without logging into the account itself) (default - False)|
+|**NOTIFICATIONS_BOT_TOKEN**|The `BOT_TOKEN` of the bot that will be used to send notifications. Get it by contacting to [BotFather](https://t.me/botfather)|
+|**ADMIN_TG_USER_ID**|The Telegram `UserID` to whom the bot will send notifications. Get it by contacting to [IDBot](https://t.me/username_to_id_bot)|
 
 ## Quick Start 📚
 
@@ -47,7 +45,7 @@ To quickly install the required libraries and run the bot:
 
 ---
 
-## Prerequisites
+## 🎓 Prerequisites
 
 Make sure you have Python **3.10** installed.  
 Download Python [here](https://www.python.org/downloads/).
@@ -60,7 +58,7 @@ Download Python [here](https://www.python.org/downloads/).
 
 ---
 
-## Installation
+## 🛠️ Installation
 You can download the [**repository**](https://github.com/yummy1gay/WheelOfWhales) by cloning it to your system and installing the necessary dependencies:
 ```shell
 git clone https://github.com/yummy1gay/WheelOfWhales.git
@@ -79,7 +77,7 @@ Linux:
 run.sh
 ```
 
-# Linux manual installation
+# <img src="https://upload.wikimedia.org/wikipedia/commons/3/35/Tux.svg" alt="Tux" width="21" /> Linux manual installation
 ```shell
 sudo sh install.sh
 python3 -m venv venv
@@ -100,7 +98,7 @@ You can also use arguments for quick start, for example:
 # 2 - Creates a session
 ```
 
-# Windows manual installation
+# <img src="https://upload.wikimedia.org/wikipedia/commons/5/5f/Windows_logo_-_2012.svg" alt="Windows Logo" width="25" /> Windows manual installation
 ```shell
 python -m venv venv
 venv\Scripts\activate
@@ -119,9 +117,6 @@ You can also use arguments for quick start, for example:
 # 1 - Run clicker
 # 2 - Creates a session
 ```
-
-
-
 
 ### Contacts
 
