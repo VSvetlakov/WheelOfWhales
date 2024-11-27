@@ -23,6 +23,7 @@ import requests
 from bot.config import settings
 from bot.utils import logger
 from bot.exceptions import InvalidSession
+from bot.connect import connector
 
 from .headers import headers
 from .agents import generate_random_user_agent
@@ -318,8 +319,9 @@ class Tapper:
             nanoid = resp_json.get("user", {}).get("nanoid")
             flappy_score = resp_json.get("meta", {}).get("flappyScore")
             dino_score = resp_json.get("meta", {}).get("dinoScore")
+            wallet = resp_json.get("user", {}).get("walletAddress")
 
-            return (token, whitelisted, banned, balance, streak, last_login, referrer, tribe, tasks, nanoid, flappy_score, dino_score)
+            return (token, whitelisted, banned, balance, streak, last_login, referrer, tribe, tasks, nanoid, flappy_score, dino_score, wallet)
 
         except aiohttp.ContentTypeError as e:
             logger.error(f"<light-yellow>{self.session_name}</light-yellow> | 🚫 ContentTypeError: {str(e)}. Response: {await resp.text()}")
@@ -1155,7 +1157,7 @@ class Tapper:
             login = await self.login(http_client=http_client, init_data=init_data)
 
             if login is not None:
-                token, whitelisted, banned, balance, streak, last_login, referrer, tribe, tasks, nanoid, flappy_score, dino_score = login
+                token, whitelisted, banned, balance, streak, last_login, referrer, tribe, tasks, nanoid, flappy_score, dino_score, wallet = login
                 self.user_data["balance"] = balance
                 self.user_data["streak"] = streak
                 self.user_data["acc_ref_id"] = nanoid
@@ -1225,6 +1227,16 @@ class Tapper:
                                 self.save_user_data()
                             else:
                                 logger.error(f"<light-yellow>{self.session_name}</light-yellow> | 😔 <red>Failed</red> to join squad: {squad_name}")
+
+        if settings.AUTO_CONNECT_WALLETS:
+            if not wallet:
+                connect = await connector.connect_wallet(self.session_name, http_client, proxy)
+                if connect:
+                    await self.verify("CONNECT_WALLET", http_client, proxy)
+
+        if settings.RECONNECT_WALLETS:
+            if wallet:
+                await connector.connect_wallet(self.session_name, http_client, proxy)
 
         if settings.AUTO_TASKS:
             await self.complete_tasks(tasks, http_client, proxy)

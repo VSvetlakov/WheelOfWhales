@@ -9,6 +9,8 @@ class Settings(BaseSettings):
    
     AUTO_TAP: bool = True
 
+    AUTO_CONNECT_WALLETS: bool = False
+
     SCORE: list[int] = [5, 30]
 
     SQUAD_NAME: str = 'yummy_squad'
@@ -23,6 +25,8 @@ class Settings(BaseSettings):
     RANDOM_DELAY_IN_RUN: list[int] = [5, 30]
 
     NIGHT_MODE: bool = False
+
+    RECONNECT_WALLETS: bool = False
 
     USE_PROXY_FROM_FILE: bool = False
 

@@ -11,6 +11,7 @@
 |Proxy binding to session|✅|
 |Auto Referral|✅|
 |Automatic joining to squad|✅|
+|Automatic connection wallets|✅|
 |AutoTapper|✅|
 |Automatic wheel spinning|✅|
 |AutoPlay games (Flappy and Dino)|✅|
@@ -24,6 +25,7 @@
 |**API_ID**|Platform data from which to run the Telegram session (default - android)|
 |**API_HASH**|Platform data from which to run the Telegram session (default - android)|
 |**AUTO_TAP**|Automatic clicking (default - True)|
+|**AUTO_CONNECT_WALLETS**|Automatic connection of TON wallets to accounts. Addresses and seed phrases are saved in connected_wallets.txt (requires Node.js) (default - False)|
 |**SCORE**|Score per game (default is [5, 30] (That is, 5 to 30))|
 |**SQUAD_NAME**|@username of the squad channel/chat without the '@' symbol|
 |**REF_ID**|Text after 'start=' in your referral link|
@@ -32,8 +34,9 @@
 |**USE_RANDOM_DELAY_IN_RUN**|Name saying itself (default - True)|
 |**RANDOM_DELAY_IN_RUN**|Random seconds delay for ^^^ (default is [5, 30])|
 |**NIGHT_MODE**|Pauses operations from 22:00 to 06:00 UTC (default - False)|
-| **USE_PROXY_FROM_FILE**|Whether to use a proxy from the `bot/config/proxies.txt` file (True / False)|
-| **FREE_SPINS_NOTIFICATIONS**|Sends notifications about free spins won in the wheels. The notification also provides a link to log into the @whale session account (this feature allows you to access @whale on the account where the spins were won without logging into the account itself) (default - False)|
+|**RECONNECT_WALLETS**|If you have lost the wallets information, you can reconnect new wallets by setting this parameter to True. (default - False)|
+|**USE_PROXY_FROM_FILE**|Whether to use a proxy from the `bot/config/proxies.txt` file (True / False)|
+|**FREE_SPINS_NOTIFICATIONS**|Sends notifications about free spins won in the wheels. The notification also provides a link to log into the @whale session account (this feature allows you to access @whale on the account where the spins were won without logging into the account itself) (default - False)|
 |**NOTIFICATIONS_BOT_TOKEN**|The `BOT_TOKEN` of the bot that will be used to send notifications. Get it by contacting to [BotFather](https://t.me/botfather)|
 |**ADMIN_TG_USER_ID**|The Telegram `UserID` to whom the bot will send notifications. Get it by contacting to [IDBot](https://t.me/username_to_id_bot)|
 
@@ -49,6 +52,9 @@ To quickly install the required libraries and run the bot:
 
 Make sure you have Python **3.10** installed.  
 Download Python [here](https://www.python.org/downloads/).
+
+Additionally, if you want to use the automatic connection of wallets, you need to install Node.js.
+Download Node.js [here](https://nodejs.org/en).
 
 ### Obtaining API Keys
 
@@ -85,6 +91,10 @@ source venv/bin/activate
 pip3 install -r requirements.txt
 cp .env-example .env
 nano .env  # Here you must specify your API_ID and API_HASH, the rest is taken by default
+
+# If you want to use automatic wallet connection, install Node.js dependencies:
+npm install
+
 python3 main.py
 ```
 
@@ -105,6 +115,10 @@ venv\Scripts\activate
 pip install -r requirements.txt
 copy .env-example .env
 # Here you must specify your API_ID and API_HASH, the rest is taken by default
+
+# If you want to use automatic wallet connection, install Node.js dependencies:
+npm install
+
 python main.py
 ```
 
