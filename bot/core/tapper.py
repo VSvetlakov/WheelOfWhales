@@ -888,10 +888,27 @@ class Tapper:
             logger.error(f"<light-yellow>{self.session_name}</light-yellow> | 🚫 <red>Error</red> joining squad {squad_name}: {error}")
             return None
 
-    async def claim_ref(self):
+    async def claim_ref(self, proxy):
         try:
+            scraper = cloudscraper.create_scraper()
+            proxies = {
+                'http': proxy,
+                'https': proxy,
+                'socks5': proxy
+            } if proxy else None
+
+            headers = {
+                'Accept': 'application/json, text/plain, */*',
+                'Accept-Encoding': 'gzip, deflate, br, zstd',
+                'Accept-Language': 'ru-RU,ru;q=0.9',
+                'Origin': 'https://clicker.crashgame247.io',
+                'Referer': 'https://clicker.crashgame247.io/',
+                "Authorization": self.scraper.headers.get('Authorization'),
+                "User-Agent": self.scraper.headers.get('User-Agent')
+            }
+
             while True:
-                response = self.scraper.get(f"{self.url}/user/invitations")
+                response = scraper.get(f"{self.url}/user/invitations", headers=headers, proxies=proxies)
                 
                 if response.status_code != 200:
                     await asyncio.sleep(300)
@@ -912,19 +929,10 @@ class Tapper:
                 if amount > 0:
                     await asyncio.sleep(random.uniform(5, 10))
 
-                    claim_headers = {
-                        'Accept': 'application/json, text/plain, */*',
-                        'Accept-Encoding': 'gzip, deflate, br, zstd',
-                        'Accept-Language': 'ru-RU,ru;q=0.9',
-                        'Origin': 'https://clicker.crashgame247.io',
-                        'Referer': 'https://clicker.crashgame247.io/',
-                        "Authorization": self.scraper.headers.get('Authorization'),
-                        "User-Agent": self.scraper.headers.get('User-Agent')
-                    }
-
-                    claim = self.scraper.post(
+                    claim = scraper.post(
                         f"{self.url}/user/invitations/claim",
-                        headers=claim_headers
+                        headers=headers,
+                        proxies=proxies
                     )
 
                     if claim.status_code == 200:
@@ -1091,7 +1099,7 @@ class Tapper:
             asyncio.create_task(self.clicker(proxy))
 
         if settings.AUTO_CLAIM_REF_REWARD:
-            asyncio.create_task(self.claim_ref())
+            asyncio.create_task(self.claim_ref(proxy))
 
         while True:
             try:
