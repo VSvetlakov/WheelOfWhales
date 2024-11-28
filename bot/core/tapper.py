@@ -912,8 +912,19 @@ class Tapper:
                 if amount > 0:
                     await asyncio.sleep(random.uniform(5, 10))
 
+                    claim_headers = {
+                        'Accept': 'application/json, text/plain, */*',
+                        'Accept-Encoding': 'gzip, deflate, br, zstd',
+                        'Accept-Language': 'ru-RU,ru;q=0.9',
+                        'Origin': 'https://clicker.crashgame247.io',
+                        'Referer': 'https://clicker.crashgame247.io/',
+                        "Authorization": self.scraper.headers.get('Authorization'),
+                        "User-Agent": self.scraper.headers.get('User-Agent')
+                    }
+
                     claim = self.scraper.post(
-                        f"{self.url}/user/invitations/claim"
+                        f"{self.url}/user/invitations/claim",
+                        headers=claim_headers
                     )
 
                     if claim.status_code == 200:
