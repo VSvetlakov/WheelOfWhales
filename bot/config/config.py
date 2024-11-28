@@ -30,6 +30,8 @@ class Settings(BaseSettings):
 
     USE_PROXY_FROM_FILE: bool = False
 
+    WEBSOCKETS_WITHOUT_PROXY: bool = False
+
     FREE_SPINS_NOTIFICATIONS: bool = False
 
     NOTIFICATIONS_BOT_TOKEN: str = ''

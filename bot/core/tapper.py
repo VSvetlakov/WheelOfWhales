@@ -625,7 +625,10 @@ class Tapper:
     async def send_websocket_messages(self, ws_url, wsToken, wsSubToken, id_for_ws, proxy, http_client):
         while True:
             try:
-                proxy_conn = ProxyConnector.from_url(proxy) if proxy else None
+                if settings.WEBSOCKETS_WITHOUT_PROXY:
+                    proxy_conn = None
+                else:
+                    proxy_conn = ProxyConnector.from_url(proxy) if proxy else None
 
                 async with aiohttp.ClientSession(connector=proxy_conn) as ws_session:
                     async with ws_session.ws_connect(ws_url) as websocket:
@@ -880,8 +883,6 @@ class Tapper:
             'DOWNLOAD_WALLET': self.verify,
             'LIKE_RETWEET': self.verify,
             'BITS': self.verify,
-            'BOOM': self.verify,
-            'DEJEN_DOG': self.verify,
             'OWLS': self.verify,
             'SPORTS_MANIA': self.verify,
             'CRYPTO_HUB': self.verify,
@@ -899,17 +900,17 @@ class Tapper:
             'W_COIN': self.verify
         }
 
-        codes = {
-            'FIND_CODE_tokenflip': 'tokenflip'
-        }
+        # codes = {
+            # 'FIND_CODE_tokenflip': 'tokenflip'
+        # }
 
         for task in methods.keys():
             if task not in tasks or not tasks[task]:
                 await methods[task](task, http_client, proxy)
 
-        for task, code in codes.items():
-            if task not in tasks or not tasks[task]:
-                await self.verify_code(code, http_client, proxy)
+        # for task, code in codes.items():
+            # if task not in tasks or not tasks[task]:
+                # await self.verify_code(code, http_client, proxy)
 
     async def verify(self, task, http_client, proxy): 
         try:
@@ -1232,11 +1233,14 @@ class Tapper:
             if not wallet:
                 connect = await connector.connect_wallet(self.session_name, http_client, proxy)
                 if connect:
+                    self.user_data["wallet_connected"] = True
                     await self.verify("CONNECT_WALLET", http_client, proxy)
 
         if settings.RECONNECT_WALLETS:
             if wallet:
                 await connector.connect_wallet(self.session_name, http_client, proxy)
+                if not "CONNECT_WALLET" in tasks:
+                    await self.verify("CONNECT_WALLET", http_client, proxy)
 
         if settings.AUTO_TASKS:
             await self.complete_tasks(tasks, http_client, proxy)
