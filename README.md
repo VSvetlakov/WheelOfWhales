@@ -36,6 +36,7 @@
 |**NIGHT_MODE**|Pauses operations from 22:00 to 06:00 UTC (default - False)|
 |**RECONNECT_WALLETS**|If you have lost the wallets information, you can reconnect new wallets by setting this parameter to True. (default - False)|
 |**USE_PROXY_FROM_FILE**|Whether to use a proxy from the `bot/config/proxies.txt` file (True / False)|
+|**WEBSOCKETS_WITHOUT_PROXY**|WebSockets are used without a proxy due to this setting, resulting in fewer WebSocket errors.|
 |**FREE_SPINS_NOTIFICATIONS**|Sends notifications about free spins won in the wheels. The notification also provides a link to log into the @whale session account (this feature allows you to access @whale on the account where the spins were won without logging into the account itself) (default - False)|
 |**NOTIFICATIONS_BOT_TOKEN**|The `BOT_TOKEN` of the bot that will be used to send notifications. Get it by contacting to [BotFather](https://t.me/botfather)|
 |**ADMIN_TG_USER_ID**|The Telegram `UserID` to whom the bot will send notifications. Get it by contacting to [IDBot](https://t.me/username_to_id_bot)|
