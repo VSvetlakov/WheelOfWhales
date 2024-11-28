@@ -5,35 +5,11 @@ from bot.utils import logger
 from bot.config import settings
 from pathlib import Path
 
-async def get_payload(session_name, http_client, proxy):
+async def get_payload(session_name, scraper):
     url = f"https://clicker-api.crashgame247.io/user/wallet/proof"
     
-    headers = {
-        'Accept': 'application/json, text/plain, */*',
-        'Accept-Encoding': 'gzip, deflate, br, zstd',
-        'Accept-Language': 'ru-RU,ru;q=0.9',
-        'Authorization': http_client.headers.get('Authorization'),
-        'Origin': 'https://clicker.crashgame247.io',
-        'Priority': 'u=1, i',
-        'Referer': 'https://clicker.crashgame247.io/',
-        'Sec-Ch-Ua': '"Google Chrome";v="129", "Not=A?Brand";v="8", "Chromium";v="129"',
-        'Sec-Ch-Ua-Mobile': '?1',
-        'Sec-Ch-Ua-Platform': '"Android"',
-        'Sec-Fetch-Dest': 'empty',
-        'Sec-Fetch-Mode': 'cors',
-        'Sec-Fetch-Site': 'same-site',
-        'User-Agent': http_client.headers.get('User-Agent')
-    }
-    
     try:
-        scraper = cloudscraper.create_scraper()
-
-        proxies = {
-            'http': proxy,
-            'https': proxy,
-        } if proxy else None
-
-        response = scraper.get(url, headers=headers, proxies=proxies)
+        response = scraper.get(url)
         
         if response.status_code == 200:
             json_data = response.json()
@@ -56,8 +32,8 @@ async def get_payload(session_name, http_client, proxy):
     except Exception as e:
         logger.error(f"<light-yellow>{session_name}</light-yellow> | 🤷‍♂️ Unexpected <red>error</red>: {str(e)}")
 
-async def generate_info(session_name, http_client, proxy):
-    payload = await get_payload(session_name, http_client, proxy)
+async def generate_info(session_name, scraper):
+    payload = await get_payload(session_name, scraper)
     script_dir = Path(__file__).resolve().parent
     generator_path = script_dir / 'generator.cjs'
     process = await asyncio.create_subprocess_exec(
@@ -72,9 +48,9 @@ async def generate_info(session_name, http_client, proxy):
     result_json = json.loads(stdout.decode())
     return result_json
 
-async def connect_wallet(session_name, http_client, proxy):
+async def connect_wallet(session_name, scraper):
     try:
-        wallet_info = await generate_info(session_name, http_client, proxy)
+        wallet_info = await generate_info(session_name, scraper)
         if settings.DEBUG:
             logger.debug(f"<light-yellow>{session_name}</light-yellow> | Generated Wallet: {wallet_info}")
         if not wallet_info:
@@ -98,27 +74,8 @@ async def connect_wallet(session_name, http_client, proxy):
         }
 
         url = "https://clicker-api.crashgame247.io/user/wallet/connect"
-        headers = {
-            'Accept': 'application/json, text/plain, */*',
-            'Accept-Encoding': 'gzip, deflate, br, zstd',
-            'Accept-Language': 'ru-RU,ru;q=0.9',
-            'Authorization': http_client.headers.get('Authorization'),
-            'Origin': 'https://clicker.crashgame247.io',
-            'Priority': 'u=1, i',
-            'Referer': 'https://clicker.crashgame247.io/',
-            'Sec-Ch-Ua': '"Google Chrome";v="129", "Not=A?Brand";v="8", "Chromium";v="129"',
-            'Sec-Ch-Ua-Mobile': '?1',
-            'Sec-Ch-Ua-Platform': '"Android"',
-            'Sec-Fetch-Dest': 'empty',
-            'Sec-Fetch-Mode': 'cors',
-            'Sec-Fetch-Site': 'same-site',
-            'User-Agent': http_client.headers.get('User-Agent')
-        }
         
-        scraper = cloudscraper.create_scraper()
-        proxies = {'http': proxy, 'https': proxy} if proxy else None
-        
-        response = scraper.patch(url, headers=headers, json=connect_info, proxies=proxies)
+        response = scraper.patch(url, json=connect_info)
         
         if response.status_code == 200:
             json_data = response.json()

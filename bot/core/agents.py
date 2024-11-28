@@ -1,4 +1,5 @@
 import random
+import re
 
 existing_versions = {
     110: [
@@ -266,3 +267,7 @@ def generate_random_user_agent(device_type='android', browser_type='chrome'):
                     f"Firefox/{browser_version}.0")
 
     return None
+
+def get_sec_ch_ua(user_agent: str) -> str:
+    browser_version = re.search(r'Chrome/(\d+)', user_agent).group(1)
+    return f'"Android WebView";v="{browser_version}", "Chromium";v="{browser_version}", "Not_A Brand";v="24"'

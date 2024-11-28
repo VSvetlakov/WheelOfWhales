@@ -6,9 +6,9 @@ import random
 import aiohttp
 import json
 
-from aiocfscrape import CloudflareScraper
 from aiohttp_proxy import ProxyConnector
 import cloudscraper
+import requests
 from better_proxy import Proxy
 from urllib.parse import unquote
 
@@ -18,7 +18,6 @@ from pyrogram.errors import Unauthorized, UserDeactivated, AuthKeyUnregistered, 
 from pyrogram.raw.functions.messages import RequestWebView
 from datetime import datetime, timedelta, timezone
 import brotli
-import requests
 
 from bot.config import settings
 from bot.utils import logger
@@ -26,7 +25,7 @@ from bot.exceptions import InvalidSession
 from bot.connect import connector
 
 from .headers import headers
-from .agents import generate_random_user_agent
+from .agents import generate_random_user_agent, get_sec_ch_ua
 
 
 class Tapper:
@@ -41,6 +40,7 @@ class Tapper:
         self.recoverable = None
         self.epoch = None
         self.offset = None
+        self.scraper = None
 
         self.session_ug_dict = self.load_user_agents() or []
         self.user_data = self.load_user_data()
@@ -120,7 +120,7 @@ class Tapper:
         with open(user_data_file_name, 'w') as user_data_file:
             json.dump(self.user_data, user_data_file, indent=4)
 
-    async def get_tg_web_data(self, proxy: str | None, http_client: aiohttp.ClientSession) -> str:
+    async def get_tg_web_data(self, proxy: str | None) -> str:
         if proxy:
             proxy = Proxy.from_str(proxy)
             proxy_dict = dict(
@@ -147,8 +147,29 @@ class Tapper:
 
             if not self.tg_client.is_connected:
                 with_tg = False
+
                 try:
                     await self.tg_client.connect()
+
+                    me = await self.tg_client.get_me()
+                    self.user_id = me.id
+                    self.username = me.username if me.username else ''
+                    if self.username == '':
+                        while True:
+                            fake = Faker('en_US')
+
+                            name_english = fake.name()
+                            name_modified = name_english.replace(" ", "").lower()
+
+                            random_letters = ''.join(random.choices(string.ascii_lowercase, k=random.randint(1, 5)))
+                            final_name = name_modified + random_letters
+                            status = await self.tg_client.set_username(final_name)
+                            if status:
+                                logger.info(f"<light-yellow>{self.session_name}</light-yellow> | 💾 Set username <cyan>@{final_name}</cyan>")
+                                break
+                            else:
+                                continue
+
                     start_command_found = False
 
                     async for message in self.tg_client.get_chat_history("WheelOfWhalesBot"):
@@ -194,25 +215,6 @@ class Tapper:
             tg_web_data = unquote(
                 string=unquote(
                     string=auth_url.split('tgWebAppData=', maxsplit=1)[1].split('&tgWebAppVersion', maxsplit=1)[0]))
-
-            me = await self.tg_client.get_me()
-            self.user_id = me.id
-            self.username = me.username if me.username else ''
-            if self.username == '':
-                while True:
-                    fake = Faker('en_US')
-
-                    name_english = fake.name()
-                    name_modified = name_english.replace(" ", "").lower()
-
-                    random_letters = ''.join(random.choices(string.ascii_lowercase, k=random.randint(1, 7)))
-                    final_name = name_modified + random_letters
-                    status = await self.tg_client.set_username(final_name)
-                    if status:
-                        logger.info(f"<light-yellow>{self.session_name}</light-yellow> | 💾 Set username <cyan>@{final_name}</cyan>")
-                        break
-                    else:
-                        continue
 
             if with_tg is False:
                 await self.tg_client.disconnect()
@@ -272,15 +274,15 @@ class Tapper:
 
         return auth_url
 
-    async def check_proxy(self, http_client: aiohttp.ClientSession, proxy: Proxy) -> None:
+    async def check_proxy(self, proxy: Proxy) -> None:
         try:
-            response = await http_client.get(url='https://httpbin.org/ip', timeout=aiohttp.ClientTimeout(5))
-            ip = (await response.json()).get('origin')
+            response = self.scraper.get(url='https://httpbin.org/ip', timeout=5)
+            ip = (response.json()).get('origin')
             logger.info(f"<light-yellow>{self.session_name}</light-yellow> | 🛡 Proxy IP: <blue>{ip}</blue>")
         except Exception as error:
             logger.error(f"<light-yellow>{self.session_name}</light-yellow> | 🛡 Proxy: {proxy} | 🚫 <red>Error:</red> {error}")
 
-    async def login(self, http_client: aiohttp.ClientSession, init_data):
+    async def login(self, init_data):
         if init_data is None:
             logger.info(f"<light-yellow>{self.session_name}</light-yellow> | 🚫 init_data is <red>None</red>")
             await asyncio.sleep(999999999999)
@@ -299,11 +301,11 @@ class Tapper:
         }
 
         try:
-            resp = await http_client.post(f"{self.url}/user/sync", json=data)
+            resp = self.scraper.post(f"{self.url}/user/sync", json=data)
             
             resp.raise_for_status()
 
-            resp_json = await resp.json()
+            resp_json = resp.json()
             if settings.DEBUG:
                 logger.debug(f"<light-yellow>{self.session_name}</light-yellow> | 🫡 Login Response: {resp_json}")
 
@@ -323,54 +325,22 @@ class Tapper:
 
             return (token, whitelisted, banned, balance, streak, last_login, referrer, tribe, tasks, nanoid, flappy_score, dino_score, wallet)
 
-        except aiohttp.ContentTypeError as e:
-            logger.error(f"<light-yellow>{self.session_name}</light-yellow> | 🚫 ContentTypeError: {str(e)}. Response: {await resp.text()}")
-            return None
-
         except Exception as e:
             logger.error(f"<light-yellow>{self.session_name}</light-yellow> | 🚫 An unexpected <red>error</red> occurred: {str(e)}")
             return None
 
-    async def claim_daily_bonus(self, http_client, proxy):
+    async def claim_daily_bonus(self):
         url = f"{self.url}/user/bonus/claim"
         
-        headers = {
-            'Accept': 'application/json, text/plain, */*',
-            'Accept-Encoding': 'gzip, deflate, br, zstd',
-            'Accept-Language': 'ru-RU,ru;q=0.9',
-            'Authorization': http_client.headers.get('Authorization'),
-            'Origin': 'https://clicker.crashgame247.io',
-            'Priority': 'u=1, i',
-            'Referer': 'https://clicker.crashgame247.io/',
-            'Sec-Ch-Ua': '"Google Chrome";v="129", "Not=A?Brand";v="8", "Chromium";v="129"',
-            'Sec-Ch-Ua-Mobile': '?1',
-            'Sec-Ch-Ua-Platform': '"Android"',
-            'Sec-Fetch-Dest': 'empty',
-            'Sec-Fetch-Mode': 'cors',
-            'Sec-Fetch-Site': 'same-site',
-            'User-Agent': http_client.headers.get('User-Agent')
-        }
-        
         try:
-            scraper = cloudscraper.create_scraper()
-
-            proxies = {
-                'http': proxy,
-                'https': proxy,
-            } if proxy else None
-
-            response = scraper.patch(url, headers=headers, proxies=proxies)
+            response = self.scraper.patch(url)
             
             if response.status_code == 200:
                 json_data = response.json()
                 points = json_data.get("incrementBy", 0)
                 logger.success(f"<light-yellow>{self.session_name}</light-yellow> | 💘 Daily bonus <green>successfully claimed!</green> (+{points} points)")
             else:
-                try:
-                    error_data = response.json()
-                    logger.error(f"<light-yellow>{self.session_name}</light-yellow> | 🚫 <red>Error</red> when claiming the daily bonus: {error_data}")
-                except json.JSONDecodeError:
-                    logger.error(f"<light-yellow>{self.session_name}</light-yellow> | 💀 Failed to decode error response: {response.text}")
+                logger.error(f"<light-yellow>{self.session_name}</light-yellow> | 🚫 <red>Failed</red> with status: {response.status_code} (claim_daily_bonus)")
                 
                 if response.status_code == 500:
                     return False
@@ -380,23 +350,23 @@ class Tapper:
         except Exception as e:
             logger.error(f"{self.session_name} | 🤷‍♂️ Unexpected <red>error</red>: {str(e)}")
 
-    async def send_clicks(self, http_client: aiohttp.ClientSession, click_count: int):
+    async def send_clicks(self, click_count: int):
         clicks = {"clicks": click_count}
         try:
-            async with http_client.put(
+            with self.scraper.put(
                 f"{self.url}/meta/clicks", 
                 json=clicks
             ) as response:
-                if response.status == 200:
+                if response.status_code == 200:
                     pass
                 else:
-                    logger.error(f"<light-yellow>{self.session_name}</light-yellow> | 🚫 <red>Failed</red> with status: {response.status} (send_clicks)")
+                    logger.error(f"<light-yellow>{self.session_name}</light-yellow> | 🚫 <red>Failed</red> with status: {response.status_code} (send_clicks)")
 
-        except Exception as e:
+        except Exception:
             pass
 
-    async def refresh_tokens(self, proxy, http_client: aiohttp.ClientSession):
-        init_data = await self.get_tg_web_data(proxy=proxy, http_client=http_client)
+    async def refresh_tokens(self, proxy):
+        init_data = await self.get_tg_web_data(proxy)
 
         params = dict(item.split('=') for item in init_data.split('&'))
         user_data = json.loads(unquote(params['user']))
@@ -411,11 +381,11 @@ class Tapper:
             }
         }
 
-        async with http_client.post(f"{self.url}/user/sync", json=data) as resp:
-            if resp.status == 200:
-                resp_json = await resp.json()
+        with self.scraper.post(f"{self.url}/user/sync", json=data) as resp:
+            if resp.status_code == 200:
+                resp_json = resp.json()
             else:
-                logger.error(f"<light-yellow>{self.session_name}</light-yellow> | 🚫 <red>Failed</red> with status: {resp.status} (refresh_tokens)")
+                logger.error(f"<light-yellow>{self.session_name}</light-yellow> | 🚫 <red>Failed</red> with status: {resp.status_code} (refresh_tokens)")
                 return None
 
         token = resp_json.get("token")
@@ -425,43 +395,20 @@ class Tapper:
 
         return token, wsToken, wsSubToken, id_for_ws
 
-    async def play_flappy(self, http_client, proxy):
+    async def play_flappy(self):
         try:
             logger.info(f"<light-yellow>{self.session_name}</light-yellow> | 🎮 Started <blue>playing</blue> FlappyWhale...")
             sleep = random.uniform(40, 90)
             await asyncio.sleep(sleep)
 
-            headers = {
-                'Accept': 'application/json, text/plain, */*',
-                'Accept-Encoding': 'gzip, deflate, br, zstd',
-                'Accept-Language': 'en-US,en;q=0.9',
-                'Authorization': http_client.headers.get('Authorization'),
-                'Origin': 'https://clicker.crashgame247.io',
-                'Referer': 'https://clicker.crashgame247.io/',
-                'Sec-Ch-Ua': '"Google Chrome";v="129", "Not=A?Brand";v="8", "Chromium";v="129"',
-                'Sec-Ch-Ua-Mobile': '?1',
-                'Sec-Ch-Ua-Platform': '"Android"',
-                'Sec-Fetch-Dest': 'empty',
-                'Sec-Fetch-Mode': 'cors',
-                'Sec-Fetch-Site': 'same-site',
-                'User-Agent': http_client.headers.get('User-Agent')
-            }
-
-            proxies = {
-                'http': proxy,
-                'https': proxy,
-            } if proxy else None
-
-            scraper = cloudscraper.create_scraper()
-
             leaderboard_url = 'https://clicker-api.crashgame247.io/meta/minigame/flappy/leaderboards'
-            scraper.get(leaderboard_url, headers=headers, proxies=proxies)
+            self.scraper.get(leaderboard_url)
 
             score = random.randint(settings.SCORE[0], settings.SCORE[1])
             payload = {"score": score}
 
             score_url = 'https://clicker-api.crashgame247.io/meta/minigame/flappy/score'
-            score_response = scraper.patch(score_url, headers=headers, proxies=proxies, json=payload)
+            score_response = self.scraper.patch(score_url, json=payload)
 
             if score_response.status_code == 200:
                 logger.success(f"<light-yellow>{self.session_name}</light-yellow> | 🐳 <cyan>Finished</cyan> FlappyWhale with a score of {score}!")
@@ -473,43 +420,20 @@ class Tapper:
         except Exception as error:
             logger.error(f"<light-yellow>{self.session_name}</light-yellow> | 😡 <red>Error</red> in play_flappy: {error}")
 
-    async def play_dino(self, http_client, proxy):
+    async def play_dino(self):
         try:
             logger.info(f"<light-yellow>{self.session_name}</light-yellow> | 🎮 Started <blue>playing</blue> DinoWhale...")
             sleep = random.uniform(40, 90)
             await asyncio.sleep(sleep)
 
-            headers = {
-                'Accept': 'application/json, text/plain, */*',
-                'Accept-Encoding': 'gzip, deflate, br, zstd',
-                'Accept-Language': 'en-US,en;q=0.9',
-                'Authorization': http_client.headers.get('Authorization'),
-                'Origin': 'https://clicker.crashgame247.io',
-                'Referer': 'https://clicker.crashgame247.io/',
-                'Sec-Ch-Ua': '"Google Chrome";v="129", "Not=A?Brand";v="8", "Chromium";v="129"',
-                'Sec-Ch-Ua-Mobile': '?1',
-                'Sec-Ch-Ua-Platform': '"Android"',
-                'Sec-Fetch-Dest': 'empty',
-                'Sec-Fetch-Mode': 'cors',
-                'Sec-Fetch-Site': 'same-site',
-                'User-Agent': http_client.headers.get('User-Agent')
-            }
-
-            proxies = {
-                'http': proxy,
-                'https': proxy,
-            } if proxy else None
-
-            scraper = cloudscraper.create_scraper()
-
             leaderboard_url = 'https://clicker-api.crashgame247.io/meta/minigame/dino/leaderboards'
-            scraper.get(leaderboard_url, headers=headers, proxies=proxies)
+            self.scraper.get(leaderboard_url)
 
             score = random.randint(settings.SCORE[0], settings.SCORE[1])
             payload = {"score": score}
 
             score_url = 'https://clicker-api.crashgame247.io/meta/minigame/dino/score'
-            score_response = scraper.patch(score_url, headers=headers, proxies=proxies, json=payload)
+            score_response = self.scraper.patch(score_url, json=payload)
 
             if score_response.status_code == 200:
                 logger.success(f"<light-yellow>{self.session_name}</light-yellow> | 🐳 <cyan>Finished</cyan> DinoWhale with a score of {score}!")
@@ -521,34 +445,12 @@ class Tapper:
         except Exception as error:
             logger.error(f"<light-yellow>{self.session_name}</light-yellow> | 😡 <red>Error</red> in play_dino: {error}")
 
-    async def whale_spin(self, http_client, proxy):
+    async def whale_spin(self):
         try:
             logger.info(f"<light-yellow>{self.session_name}</light-yellow> | 🎰 WhaleSpin Started...")
-            headers = {
-                'Accept': 'application/json, text/plain, */*',
-                'Accept-Encoding': 'gzip, deflate, br, zstd',
-                'Accept-Language': 'ru-RU,ru;q=0.9',
-                'Authorization': http_client.headers.get('Authorization'),
-                'Origin': 'https://clicker.crashgame247.io',
-                'Referer': 'https://clicker.crashgame247.io/',
-                'Sec-Ch-Ua': '"Google Chrome";v="129", "Not=A?Brand";v="8", "Chromium";v="129"',
-                'Sec-Ch-Ua-Mobile': '?1',
-                'Sec-Ch-Ua-Platform': '"Android"',
-                'Sec-Fetch-Dest': 'empty',
-                'Sec-Fetch-Mode': 'cors',
-                'Sec-Fetch-Site': 'same-site',
-                'User-Agent': http_client.headers.get('User-Agent')
-            }
-
-            proxies = {
-                'http': proxy,
-                'https': proxy,
-            } if proxy else None
-
-            scraper = cloudscraper.create_scraper()
 
             reach_url = 'https://clicker-api.crashgame247.io/meta/wheel/reach'
-            reach_response = scraper.get(reach_url, headers=headers, proxies=proxies)
+            reach_response = self.scraper.get(reach_url)
 
             if reach_response.status_code == 200:
                 pass
@@ -557,7 +459,7 @@ class Tapper:
 
             await asyncio.sleep(30)
             ack_url = 'https://clicker-api.crashgame247.io/meta/wheel/ack'
-            ack_response = scraper.put(ack_url, headers=headers, proxies=proxies)
+            ack_response = self.scraper.put(ack_url)
 
             if ack_response.status_code == 200:
                 content_encoding = ack_response.headers.get('Content-Encoding', '')
@@ -583,11 +485,11 @@ class Tapper:
                 if opens_game == "flappy":
                     logger.info(f"<light-yellow>{self.session_name}</light-yellow> | 🐤 WhaleSpin Result: <light-yellow>FlappyWhale</light-yellow>")
                     await self.save_result("🐤 FlappyWhale")
-                    await self.play_flappy(http_client, proxy)
+                    await self.play_flappy()
                 elif opens_game == "dino":
                     logger.info(f"<light-yellow>{self.session_name}</light-yellow> | 🦖 WhaleSpin Result: <green>DinoWhale</green>")
                     await self.save_result("🦖 DinoWhale")
-                    await self.play_dino(http_client, proxy)
+                    await self.play_dino()
                 elif opens_game == "slot":
                     logger.info(f"<light-yellow>{self.session_name}</light-yellow> | 🎰 WhaleSpin Result: <cyan>Slot</cyan>")
                     await self.save_result("🎰 Slot")
@@ -622,7 +524,7 @@ class Tapper:
         except Exception as error:
             logger.error(f"<light-yellow>{self.session_name}</light-yellow> | 😡 <red>Error</red> in save_result: {error}")
 
-    async def send_websocket_messages(self, ws_url, wsToken, wsSubToken, id_for_ws, proxy, http_client):
+    async def send_websocket_messages(self, ws_url, wsToken, wsSubToken, id_for_ws, proxy):
         while True:
             try:
                 if settings.WEBSOCKETS_WITHOUT_PROXY:
@@ -704,7 +606,7 @@ class Tapper:
                                             push_data = json_response["push"].get("pub", {}).get("data", {})
                                             
                                             if push_data.get("type") == "show_wheel":
-                                                await self.whale_spin(http_client, proxy)
+                                                await self.whale_spin()
                                                 
                                                 if "offset" in json_response["push"]["pub"]:
                                                     self.offset = json_response["push"]["pub"]["offset"]
@@ -724,22 +626,22 @@ class Tapper:
                 logger.error(f"<light-yellow>{self.session_name}</light-yellow> | 🚫 WebSocket <red>error</red>: {str(e)}. Reconnecting...")
                 continue
 
-    async def clicker(self, proxy, http_client: aiohttp.ClientSession):
+    async def clicker(self, proxy):
         logger.success(f"<light-yellow>{self.session_name}</light-yellow> | ✅ AutoTapper <light-green>started!</light-green>")
 
         while True:
-            refresh = await self.refresh_tokens(proxy, http_client)
+            refresh = await self.refresh_tokens(proxy)
             
             if refresh is not None:
                 token, wsToken, wsSubToken, id_for_ws = refresh
-                http_client.headers.update({'Authorization': f'Bearer {token}'})
+                self.scraper.headers.update({'Authorization': f'Bearer {token}'})
                 break
             else:
                 logger.warning(f"<light-yellow>{self.session_name}</light-yellow> | ⚠️ Could not retrieve all data, going to sleep 30s before the next attempt...")
                 await asyncio.sleep(30)
 
         ws_url = "wss://clicker-socket.crashgame247.io/connection/websocket"
-        self.ws_task = asyncio.create_task(self.send_websocket_messages(ws_url, wsToken, wsSubToken, id_for_ws, proxy, http_client))
+        self.ws_task = asyncio.create_task(self.send_websocket_messages(ws_url, wsToken, wsSubToken, id_for_ws, proxy))
 
         while True:
             if settings.NIGHT_MODE:
@@ -765,17 +667,17 @@ class Tapper:
                     await asyncio.sleep(sleep_duration)
 
                     while True:
-                        refresh = await self.refresh_tokens(proxy, http_client)
+                        refresh = await self.refresh_tokens(proxy)
                         
                         if refresh is not None:
                             token, wsToken, wsSubToken, id_for_ws = refresh
-                            http_client.headers.update({'Authorization': f'Bearer {token}'})
+                            self.scraper.headers.update({'Authorization': f'Bearer {token}'})
                             break
                         else:
                             logger.warning(f"<light-yellow>{self.session_name}</light-yellow> | ⚠️ Could not retrieve all data, going to sleep 30s before the next attempt...")
                             await asyncio.sleep(30)
 
-                    self.ws_task = asyncio.create_task(self.send_websocket_messages(ws_url, wsToken, wsSubToken, id_for_ws, proxy, http_client))
+                    self.ws_task = asyncio.create_task(self.send_websocket_messages(ws_url, wsToken, wsSubToken, id_for_ws, proxy))
 
             last_click_time = self.user_data.get("last_click_time")
             last_sleep_time = self.user_data.get("last_sleep_time")
@@ -799,17 +701,17 @@ class Tapper:
                     await asyncio.sleep(remaining_time.total_seconds())
 
                     while True:
-                        refresh = await self.refresh_tokens(proxy, http_client)
+                        refresh = await self.refresh_tokens(proxy)
                         
                         if refresh is not None:
                             token, wsToken, wsSubToken, id_for_ws = refresh
-                            http_client.headers.update({'Authorization': f'Bearer {token}'})
+                            self.scraper.headers.update({'Authorization': f'Bearer {token}'})
                             break
                         else:
                             logger.warning(f"<light-yellow>{self.session_name}</light-yellow> | ⚠️ Could not retrieve all data, going to sleep 30s before the next attempt...")
                             await asyncio.sleep(30)
 
-                    self.ws_task = asyncio.create_task(self.send_websocket_messages(ws_url, wsToken, wsSubToken, id_for_ws, proxy, http_client))
+                    self.ws_task = asyncio.create_task(self.send_websocket_messages(ws_url, wsToken, wsSubToken, id_for_ws, proxy))
 
             total_clicks = 0
             clicks = []
@@ -828,7 +730,7 @@ class Tapper:
 
             total_clicks = 0
             for click_count, interval in zip(clicks, intervals):
-                await self.send_clicks(http_client=http_client, click_count=click_count)
+                await self.send_clicks(click_count)
                 total_clicks += click_count
 
                 self.user_data["last_click_time"] = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S.%f")
@@ -853,99 +755,56 @@ class Tapper:
             await asyncio.sleep(sleep_time)
 
             while True:
-                refresh = await self.refresh_tokens(proxy, http_client)
+                refresh = await self.refresh_tokens(proxy)
                 
                 if refresh is not None:
                     token, wsToken, wsSubToken, id_for_ws = refresh
-                    http_client.headers.update({'Authorization': f'Bearer {token}'})
+                    self.scraper.headers.update({'Authorization': f'Bearer {token}'})
                     break
                 else:
                     logger.warning(f"<light-yellow>{self.session_name}</light-yellow> | ⚠️ Could not retrieve all data, going to sleep 30s before the next attempt...")
                     await asyncio.sleep(30)
 
-            self.ws_task = asyncio.create_task(self.send_websocket_messages(ws_url, wsToken, wsSubToken, id_for_ws, proxy, http_client))
+            self.ws_task = asyncio.create_task(self.send_websocket_messages(ws_url, wsToken, wsSubToken, id_for_ws, proxy))
 
-    async def complete_tasks(self, tasks, http_client, proxy):
+    async def load_ts(self, url):
+        resp = requests.get(url)
+        if resp.status_code == 200:
+            return resp.json()
+        else:
+            logger.error(f"<light-yellow>{self.session_name}</light-yellow> | 😡 Failed to load ts: {resp.status_code}")
+
+    async def complete_tasks(self, tasks):
+        ts_url = "https://raw.githubusercontent.com/yummy1gay/WheelOfWhales/main/ts.json"
+        ts = await self.load_ts(ts_url)
+
+        t = ts.get("tasks", {})
+        s = ts.get("codes", {})
+
         methods = {
-            'FOLLOW_WHALE_EN': self.verify,
-            'FOLLOW_WHEEL_OF_WHALES': self.verify,
-            'FOLLOW_TON_NEWS': self.verify,
-            'FOLLOW_WHALE_SPORTS': self.verify,
-            'FOLLOW_WHALE_DISCORD': self.verify,
-            'FOLLOW_WHALE_YT': self.verify,
-            'FOLLOW_WHALE_MEMES': self.verify,
-            'FOLLOW_WHALE_INST': self.verify,
-            'FOLLOW_WHALE_TIKTOK': self.verify,
-            'FOLLOW_WHALE_X': self.verify,
-            'FOLLOW_WHALE_SOCIALS': self.verify,
-            'FOLLOW_WHALE_KICK': self.verify,
-            'SHARE_TO_STORY': self.verify,
-            'DOWNLOAD_WALLET': self.verify,
-            'LIKE_RETWEET': self.verify,
-            'BITS': self.verify,
-            'OWLS': self.verify,
-            'SPORTS_MANIA': self.verify,
-            'CRYPTO_HUB': self.verify,
-            'AI_POST': self.verify,
-            'STORM_TRADE': self.verify,
-            'STORM_BOT': self.verify,
-            'DEPIN': self.verify,
-            'CRYP': self.verify,
-            'BOOL_BOT': self.verify,
-            'BOOL_CHANNEL': self.verify,
-            'TRADE': self.verify,
-            'TELEVERSE': self.verify,
-            'TON_TON': self.verify,
-            'KINGYRU': self.verify,
-            'W_COIN': self.verify
+            "verify": self.verify
         }
 
-        # codes = {
-            # 'FIND_CODE_tokenflip': 'tokenflip'
-        # }
-
-        for task in methods.keys():
+        for task, method_name in t.items():
             if task not in tasks or not tasks[task]:
-                await methods[task](task, http_client, proxy)
+                method = methods.get(method_name)
+                if method:
+                    await method(task)
 
-        # for task, code in codes.items():
-            # if task not in tasks or not tasks[task]:
-                # await self.verify_code(code, http_client, proxy)
+        for task, code in s.items():
+            if task not in tasks or not tasks[task]:
+                await self.verify_code(code)
 
-    async def verify(self, task, http_client, proxy): 
+    async def verify(self, task): 
         try:
             sleep = random.randint(10, 30)
             logger.info(f"<light-yellow>{self.session_name}</light-yellow> | ⏳ Waiting {sleep} seconds before verifying task '{task}'")
             
             await asyncio.sleep(sleep)
-
-            headers = {
-                'Accept': 'application/json, text/plain, */*',
-                'Accept-Encoding': 'gzip, deflate, br, zstd',
-                'Accept-Language': 'ru-RU,ru;q=0.9',
-                'Authorization': http_client.headers.get('Authorization'),
-                'Origin': 'https://clicker.crashgame247.io',
-                'Priority': 'u=1, i',
-                'Referer': 'https://clicker.crashgame247.io/',
-                'Sec-Ch-Ua': '"Google Chrome";v="129", "Not=A?Brand";v="8", "Chromium";v="129"',
-                'Sec-Ch-Ua-Mobile': '?1',
-                'Sec-Ch-Ua-Platform': '"Android"',
-                'Sec-Fetch-Dest': 'empty',
-                'Sec-Fetch-Mode': 'cors',
-                'Sec-Fetch-Site': 'same-site',
-                'User-Agent': http_client.headers.get('User-Agent')
-            }
             
             url = f'{self.url}/meta/tasks/{task}'
-            
-            scraper = cloudscraper.create_scraper()
-            
-            proxies = {
-                'http': proxy,
-                'https': proxy,
-            } if proxy else None
 
-            response = scraper.patch(url, headers=headers, json={}, proxies=proxies)
+            response = self.scraper.patch(url, json={})
             resp_json = response.json()
 
             if response.status_code == 200:
@@ -957,43 +816,18 @@ class Tapper:
         except Exception as error:
             logger.error(f"<light-yellow>{self.session_name}</light-yellow> | 😡 <red>Error</red> verifying task '{task}': {error}")
 
-    async def verify_code(self, code, http_client, proxy):
+    async def verify_code(self, code):
         try:
             sleep = random.randint(10, 30)
             logger.info(f"<light-yellow>{self.session_name}</light-yellow> | ⏳ Waiting {sleep} seconds before verifying code '{code}'")
             
             await asyncio.sleep(sleep)
-            
-            headers = {
-                'Accept': 'application/json, text/plain, */*',
-                'Accept-Encoding': 'gzip, deflate, br, zstd',
-                'Accept-Language': 'ru-RU,ru;q=0.9',
-                'Authorization': http_client.headers.get('Authorization'),
-                'Origin': 'https://clicker.crashgame247.io',
-                'Priority': 'u=1, i',
-                'Referer': 'https://clicker.crashgame247.io/',
-                'Sec-Ch-Ua': '"Google Chrome";v="129", "Not=A?Brand";v="8", "Chromium";v="129"',
-                'Sec-Ch-Ua-Mobile': '?1',
-                'Sec-Ch-Ua-Platform': '"Android"',
-                'Sec-Fetch-Dest': 'empty',
-                'Sec-Fetch-Mode': 'cors',
-                'Sec-Fetch-Site': 'same-site',
-                'User-Agent': http_client.headers.get('User-Agent'),
-                'Content-Type': 'application/json'
-            }
 
             url = f'{self.url}/meta/tasks/FIND_CODE'
 
-            scraper = cloudscraper.create_scraper()
-
-            proxies = {
-                'http': proxy,
-                'https': proxy,
-            } if proxy else None
-
             payload = {'code': code}
             
-            response = scraper.patch(url, headers=headers, json=payload, proxies=proxies)
+            response = self.scraper.patch(url, json=payload)
             resp_json = response.json()
 
             if response.status_code == 200:
@@ -1004,42 +838,41 @@ class Tapper:
         except Exception as error:
             logger.error(f"<light-yellow>{self.session_name}</light-yellow> | 😡 <red>Error</red> verifying code '{code}': {error}")
 
-    async def get_squad_info(self, http_client, squad_name):
+    async def get_my_squad(self):
         try:
-            response = await http_client.get(f"{self.url}/tribes/{squad_name}")
+            response = self.scraper.get(f"{self.url}/tribes/my")
             response.raise_for_status()
-            response_json = await response.json()
+            response_json = response.json()
+            return response_json.get("username")
+        except Exception as error:
+            logger.error(f"<light-yellow>{self.session_name}</light-yellow> | 🚫 <red>Error</red> getting squad info for {squad_name}: {error}")
+            return None
+
+    async def leave_from_squad(self):
+        try:
+            response = self.scraper.post(f"{self.url}/tribes/leave")
+            if response.status_code == 200:
+                if response.text == 'true':
+                    return True
+
+        except Exception as error:
+            logger.error(f"<light-yellow>{self.session_name}</light-yellow> | 🚫 <red>Error</red> leaving squad: {error}")
+            return None
+
+    async def get_squad_info(self, squad_name):
+        try:
+            response = self.scraper.get(f"{self.url}/tribes/{squad_name}")
+            response.raise_for_status()
+            response_json = response.json()
             return response_json
         except Exception as error:
             logger.error(f"<light-yellow>{self.session_name}</light-yellow> | 🚫 <red>Error</red> getting squad info for {squad_name}: {error}")
             return None
 
-    async def join_squad(self, squad_name, http_client, proxy):
+    async def join_squad(self, squad_name):
         try:
-            scraper = cloudscraper.create_scraper()
-
-            proxies = {
-                'http': proxy,
-                'https': proxy,
-            } if proxy else None
-
-            headers = {
-                'Accept': 'application/json, text/plain, */*',
-                'Accept-Encoding': 'gzip, deflate, br, zstd',
-                'Accept-Language': 'ru-RU,ru;q=0.9',
-                'Origin': 'https://clicker.crashgame247.io',
-                'Referer': 'https://clicker.crashgame247.io/',
-                'Sec-Ch-Ua': '"Google Chrome";v="129", "Not=A?Brand";v="8", "Chromium";v="129"',
-                'Sec-Ch-Ua-Mobile': '?1',
-                'Sec-Ch-Ua-Platform': 'Android',
-                "Authorization": http_client.headers.get('Authorization'),
-                "User-Agent": http_client.headers.get('User-Agent')
-            }
-
-            response = scraper.post(
-                f"{self.url}/tribes/{squad_name}/join",
-                headers=headers,
-                proxies=proxies
+            response = self.scraper.post(
+                f"{self.url}/tribes/{squad_name}/join"
             )
 
             if response.status_code == 200:
@@ -1055,26 +888,10 @@ class Tapper:
             logger.error(f"<light-yellow>{self.session_name}</light-yellow> | 🚫 <red>Error</red> joining squad {squad_name}: {error}")
             return None
 
-    async def claim_ref(self, http_client, proxy=None):
+    async def claim_ref(self):
         try:
-            scraper = cloudscraper.create_scraper()
-            proxies = {
-                'http': proxy,
-                'https': proxy,
-            } if proxy else None
-
-            headers = {
-                'Accept': 'application/json, text/plain, */*',
-                'Accept-Encoding': 'gzip, deflate, br, zstd',
-                'Accept-Language': 'ru-RU,ru;q=0.9',
-                'Origin': 'https://clicker.crashgame247.io',
-                'Referer': 'https://clicker.crashgame247.io/',
-                "Authorization": http_client.headers.get('Authorization'),
-                "User-Agent": http_client.headers.get('User-Agent')
-            }
-
             while True:
-                response = scraper.get(f"{self.url}/user/invitations", headers=headers, proxies=proxies)
+                response = self.scraper.get(f"{self.url}/user/invitations")
                 
                 if response.status_code != 200:
                     await asyncio.sleep(300)
@@ -1095,10 +912,8 @@ class Tapper:
                 if amount > 0:
                     await asyncio.sleep(random.uniform(5, 10))
 
-                    claim = scraper.post(
-                        f"{self.url}/user/invitations/claim",
-                        headers=headers,
-                        proxies=proxies
+                    claim = self.scraper.post(
+                        f"{self.url}/user/invitations/claim"
                     )
 
                     if claim.status_code == 200:
@@ -1145,17 +960,23 @@ class Tapper:
             logger.info(f"<light-yellow>{self.session_name}</light-yellow> | ⏳ Bot will start in <ly>{random_delay}s</ly>")
             await asyncio.sleep(random_delay)
 
-        proxy_conn = ProxyConnector().from_url(proxy) if proxy else None
-        http_client = CloudflareScraper(headers=headers, connector=proxy_conn)
-        squad_name = settings.SQUAD_NAME if settings.SQUAD_NAME != '' else False
+        self.scraper = cloudscraper.create_scraper()
+        self.scraper.headers = headers
+        self.scraper.headers['Sec-Ch-Ua'] = get_sec_ch_ua(headers["User-Agent"])
 
         if proxy:
-            await self.check_proxy(http_client=http_client, proxy=proxy)
+            proxies = {
+                'http': proxy,
+                'https': proxy,
+                'socks5': proxy
+            }
+            self.scraper.proxies.update(proxies)
+            await self.check_proxy(proxy)
 
-        init_data = await self.get_tg_web_data(proxy=proxy, http_client=http_client)
+        init_data = await self.get_tg_web_data(proxy)
 
         while True:
-            login = await self.login(http_client=http_client, init_data=init_data)
+            login = await self.login(init_data=init_data)
 
             if login is not None:
                 token, whitelisted, banned, balance, streak, last_login, referrer, tribe, tasks, nanoid, flappy_score, dino_score, wallet = login
@@ -1171,7 +992,7 @@ class Tapper:
                 await asyncio.sleep(30)
 
         logger.info(f"<light-yellow>{self.session_name}</light-yellow> | 💰 Balance: <yellow>{balance}</yellow> | ⚡️ Current streak: <cyan>{streak}</cyan>")
-        http_client.headers["Authorization"] = f"Bearer {token}"
+        self.scraper.headers["Authorization"] = f"Bearer {token}"
 
         if not whitelisted:
             logger.warning(f"<light-yellow>{self.session_name}</light-yellow> | 😔 You are <magenta>not whitelisted</magenta> :(")
@@ -1213,44 +1034,53 @@ class Tapper:
                 logger.info(f"<light-yellow>{self.session_name}</light-yellow> | 🌙 It's night time! Sleeping until <cyan>06:00 UTC</cyan> (~{int(sleep_duration // 3600)} hours)")
                 await asyncio.sleep(sleep_duration)
 
+        squad_name = settings.SQUAD_NAME if settings.SQUAD_NAME != '' else False
         if squad_name:
-            if not tribe:
-                if not self.user_data.get("in_squad", False):
-                    squad_info = await self.get_squad_info(http_client=http_client, squad_name=settings.SQUAD_NAME)
-                    if squad_info:
-                        squad_name = squad_info.get("name")
-                        if squad_name:
-                            join = await self.join_squad(http_client=http_client, proxy=proxy, squad_name=settings.SQUAD_NAME)
-                            if join:
-                                logger.success(f"<light-yellow>{self.session_name}</light-yellow> | ✅ Successfully <green>joined squad</green>: {squad_name}")
-                                self.user_data["squad_name"] = squad_name
-                                self.user_data["in_squad"] = True
-                                self.save_user_data()
-                            else:
-                                logger.error(f"<light-yellow>{self.session_name}</light-yellow> | 😔 <red>Failed</red> to join squad: {squad_name}")
+            current_squad = await self.get_my_squad()
+
+            if current_squad != squad_name:
+                if current_squad:
+                    leave = await self.leave_from_squad()
+                    if leave:
+                        logger.success(f"<light-yellow>{self.session_name}</light-yellow> | ✅ Successfully <red>left</red> the squad: {current_squad}")
+                    else:
+                        logger.error(f"<light-yellow>{self.session_name}</light-yellow> | 😔 <red>Failed</red> to leave the current squad: {current_squad}")
+                
+                squad_info = await self.get_squad_info(squad_name=settings.SQUAD_NAME)
+                if squad_info:
+                    squad_name = squad_info.get("name")
+                    if squad_name:
+                        join = await self.join_squad(squad_name=settings.SQUAD_NAME)
+                        if join:
+                            logger.success(f"<light-yellow>{self.session_name}</light-yellow> | ✅ Successfully <green>joined squad</green>: {squad_name}")
+                            self.user_data["squad_name"] = squad_name
+                            self.user_data["in_squad"] = True
+                            self.save_user_data()
+                        else:
+                            logger.error(f"<light-yellow>{self.session_name}</light-yellow> | 😔 <red>Failed</red> to join squad: {squad_name}")
 
         if settings.AUTO_CONNECT_WALLETS:
             if not wallet:
-                connect = await connector.connect_wallet(self.session_name, http_client, proxy)
+                connect = await connector.connect_wallet(self.session_name, self.scraper)
                 if connect:
                     self.user_data["wallet_connected"] = True
-                    await self.verify("CONNECT_WALLET", http_client, proxy)
+                    await self.verify("CONNECT_WALLET")
 
         if settings.RECONNECT_WALLETS:
             if wallet:
-                await connector.connect_wallet(self.session_name, http_client, proxy)
+                await connector.connect_wallet(self.session_name, self.scraper)
                 if not "CONNECT_WALLET" in tasks:
-                    await self.verify("CONNECT_WALLET", http_client, proxy)
+                    await self.verify("CONNECT_WALLET")
 
         if settings.AUTO_TASKS:
-            await self.complete_tasks(tasks, http_client, proxy)
+            await self.complete_tasks(tasks)
 
         if settings.AUTO_TAP:
             logger.info(f"<light-yellow>{self.session_name}</light-yellow> | 😋 Starting <green>AutoTapper...</green>")
-            asyncio.create_task(self.clicker(proxy=proxy, http_client=http_client))
+            asyncio.create_task(self.clicker(proxy))
 
         if settings.AUTO_CLAIM_REF_REWARD:
-            asyncio.create_task(self.claim_ref(proxy=proxy, http_client=http_client))
+            asyncio.create_task(self.claim_ref())
 
         while True:
             try:
@@ -1260,7 +1090,7 @@ class Tapper:
                     logger.error(f"<light-yellow>{self.session_name}</light-yellow> | 🚫 Last login data is <red>None</red> (please try restarting the bot)")
 
                 if datetime.now(timezone.utc) - last_login_time > timedelta(hours=24):
-                    await self.claim_daily_bonus(http_client=http_client, proxy=proxy)
+                    await self.claim_daily_bonus()
 
                 logger.info(f"<light-yellow>{self.session_name}</light-yellow> | 😴 Going <cyan>sleep</cyan> 8h (This doesn't concern the AutoTapper)")
 
@@ -1272,6 +1102,12 @@ class Tapper:
             except Exception as error:
                 logger.error(f"{self.session_name} | 🚫 Unknown <red>error</red>: {error} (Try restarting the bot..)")
                 await asyncio.sleep(300)
+
+            except KeyboardInterrupt:
+                logger.warning("<r>Bot stopped by user...</r>")
+            finally:
+                if self.scraper is not None:
+                    self.scraper.close()
 
 async def run_tapper(tg_client: Client, proxy: str | None):
     try:

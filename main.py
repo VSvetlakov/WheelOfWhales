@@ -1,6 +1,7 @@
 import asyncio
-from contextlib import suppress
+import sys
 
+from bot.utils import logger
 from bot.utils.launcher import process
 
 
@@ -9,5 +10,8 @@ async def main():
 
 
 if __name__ == '__main__':
-    with suppress(KeyboardInterrupt):
+    try:
         asyncio.run(main())
+    except KeyboardInterrupt:
+        logger.info("<cyan>Bot stopped by user!</cyan>")
+        sys.exit(2)
