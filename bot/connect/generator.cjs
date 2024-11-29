@@ -1,5 +1,4 @@
 "use strict";
-
 var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
     function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
     return new (P || (P = Promise))(function (resolve, reject) {
@@ -61,37 +60,41 @@ function getDomainFromURL(url) {
         throw new Error("Invalid URL: ".concat(url));
     }
 }
-function generateWalletInfo() {
+function generateWalletInfo(seed) {
     return __awaiter(this, void 0, void 0, function () {
-        var tonweb, mnemonic, seed, keyPair, wallet, stateInit, stateInitBase64, _a, _b, creationDate, walletAddress, addressTON, address, walletInfo;
+        var tonweb, mnemonic, seedBuffer, keyPair, wallet, stateInit, stateInitBase64, _a, _b, creationDate, walletAddress, addressTON, address, walletInfo;
         return __generator(this, function (_c) {
             switch (_c.label) {
                 case 0:
                     tonweb = new tonweb_1();
-                    return [4 /*yield*/, (0, ton_crypto_1.mnemonicNew)(24)];
-                case 1:
-                    mnemonic = _c.sent();
-                    return [4 /*yield*/, (0, tonweb_mnemonic_1.mnemonicToSeed)(mnemonic)];
+                    mnemonic = [];
+                    if (!seed) return [3 /*break*/, 1];
+                    mnemonic = seed.split(' '); // If the seed is specified, use it
+                    return [3 /*break*/, 3];
+                case 1: return [4 /*yield*/, (0, ton_crypto_1.mnemonicNew)(24)];
                 case 2:
-                    seed = _c.sent();
-                    keyPair = tonweb_1.utils.nacl.sign.keyPair.fromSeed(seed);
+                    mnemonic = _c.sent(); // If seed is not specified, generate a new one
+                    _c.label = 3;
+                case 3: return [4 /*yield*/, (0, tonweb_mnemonic_1.mnemonicToSeed)(mnemonic)];
+                case 4:
+                    seedBuffer = _c.sent();
+                    keyPair = tonweb_1.utils.nacl.sign.keyPair.fromSeed(seedBuffer);
                     wallet = tonweb.wallet.create({
                         publicKey: keyPair.publicKey,
                         workchain: 0,
-                        walletVersion: "v4R2",
                     });
                     return [4 /*yield*/, wallet.createStateInit()];
-                case 3:
+                case 5:
                     stateInit = _c.sent();
                     _b = (_a = tonweb_1.utils).bytesToBase64;
                     return [4 /*yield*/, stateInit.stateInit.toBoc(false)];
-                case 4:
+                case 6:
                     stateInitBase64 = _b.apply(_a, [_c.sent()]);
                     creationDate = new Date().toISOString().slice(0, 19).replace('T', ' ');
                     return [4 /*yield*/, wallet.getAddress()];
-                case 5:
+                case 7:
                     walletAddress = _c.sent();
-                    addressTON = walletAddress.toString(true, true);
+                    addressTON = walletAddress.toString(true, true, false);
                     address = walletAddress.toString(false, false, true, true);
                     walletInfo = {
                         mnemonics: mnemonic.join(' '),
@@ -117,7 +120,6 @@ function hexToUint8Array(hex) {
     }
     return byteArray;
 }
-
 function createTonProofItem(manifest, address, secretKey, payload, mnemonics, addressTON, public_key, private_key, state_init) {
     try {
         var timestamp = getTimeSec();
@@ -139,7 +141,7 @@ function createTonProofItem(manifest, address, secretKey, payload, mnemonics, ad
             domainLengthBuffer,
             domainBuffer,
             timestampBuffer,
-            Buffer.from(payload),
+            payload ? Buffer.from(payload) : Buffer.alloc(0),
         ]);
         var message = (0, crypto_1.sha256_sync)(messageBuffer);
         var bufferToSign = Buffer.concat([
@@ -159,6 +161,7 @@ function createTonProofItem(manifest, address, secretKey, payload, mnemonics, ad
             public_key: public_key,
             private_key: private_key,
             proof: {
+                name: 'ton_proof',
                 timestamp: timestamp,
                 domain: {
                     lengthBytes: domainBuffer.byteLength,
@@ -171,8 +174,7 @@ function createTonProofItem(manifest, address, secretKey, payload, mnemonics, ad
         }, null, 4);
     }
     catch (e) {
-        console.error("CreateToonProof: ".concat(e.message, " | ").concat(e.stack));
-        console.log(tweetnacl_1);
+        console.error("CreateTonProof: ".concat(e.message, " | ").concat(e.stack));
         return null;
     }
 }
@@ -187,13 +189,14 @@ function generateTonProof(manifest, wallet, payload) {
 }
 if (require.main === module) {
     var args = process.argv.slice(2);
-    if (args.length < 1) {
-        console.error('Usage: generator.cjs <payload>');
+    if (args.length < 2) {
+        console.error('Usage: generator.cjs <manifest.url> <payload (if not required, specify n0t1requ1red)> <seed (optional)>');
         process.exit(1);
     }
-    var payload_1 = args[0];
-    generateWalletInfo().then(function (wallet) {
-        generateTonProof("https://clicker.crashgame247.io/", wallet, payload_1)
+    var url_1 = args[0], payload = args[1], seed = args[2];
+    var payloadValue_1 = payload === 'n0t1requ1red' ? null : payload;
+    generateWalletInfo(seed).then(function (wallet) {
+        generateTonProof(url_1, wallet, payloadValue_1)
             .then(function (proofItem) {
             if (proofItem) {
                 console.log(proofItem);

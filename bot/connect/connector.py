@@ -37,7 +37,7 @@ async def generate_info(session_name, scraper):
     script_dir = Path(__file__).resolve().parent
     generator_path = script_dir / 'generator.cjs'
     process = await asyncio.create_subprocess_exec(
-        'node', str(generator_path), payload,
+        'node', str(generator_path), "https://clicker.crashgame247.io/", payload,
         stdout=asyncio.subprocess.PIPE,
         stderr=asyncio.subprocess.PIPE
     )
