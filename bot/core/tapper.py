@@ -845,7 +845,7 @@ class Tapper:
             response_json = response.json()
             return response_json.get("username")
         except Exception as error:
-            logger.error(f"<light-yellow>{self.session_name}</light-yellow> | 🚫 <red>Error</red> getting squad info for {squad_name}: {error}")
+            logger.error(f"<light-yellow>{self.session_name}</light-yellow> | 🚫 <red>Error</red> getting my squad info for: {error}")
             return None
 
     async def leave_from_squad(self):
@@ -949,6 +949,62 @@ class Tapper:
 
         except Exception as e:
             logger.error(f"<light-yellow>{self.session_name}</light-yellow> | 🚫 <red>Error:</red> {e} (claim_ref)")
+
+    async def token_flip(self):
+        try:
+            while True:
+                last_bet_time = self.user_data.get("last_bet_time")
+                bet_sleep_time = self.user_data.get("bet_sleep_time", 0)
+                current_time = datetime.utcnow()
+
+                if last_bet_time:
+                    last_bet_time = datetime.strptime(last_bet_time, "%Y-%m-%dT%H:%M:%S.%fZ")
+                    elapsed_time = (current_time - last_bet_time).total_seconds()
+                    remaining_sleep_time = max(0, bet_sleep_time - elapsed_time)
+
+                    if remaining_sleep_time > 0:
+                        logger.info(f"<light-yellow>{self.session_name}</light-yellow> | ⏳ Waiting for {remaining_sleep_time / 3600:.2f} hours before next token flip.")
+                        await asyncio.sleep(remaining_sleep_time)
+
+                side = random.choice(["HEADS", "TAILS"])
+
+                payload = {
+                    "side": side,
+                    "betAmount": 1000
+                }
+
+                response = self.scraper.post(f"{self.url}/tokenflips/bet", json=payload)
+
+                if response.status_code != 200:
+                    logger.error(f"<light-yellow>{self.session_name}</light-yellow> | 🚫 <red>Error</red> placing bet: {response.status_code}, {response.text}")
+                    await asyncio.sleep(random.uniform(1.5, 3))
+                    continue
+
+                game_data = response.json().get("game", {})
+                active = game_data.get("active", False)
+                result = game_data.get("results", [])
+
+                if not active:
+                    logger.info(f"<light-yellow>{self.session_name}</light-yellow> | ❌ <red>Lost the bet</red> | Chose: {side} | Result: {result[0] if result else 'Unknown'}")
+                else:
+                    cashout_response = self.scraper.post(f"{self.url}/tokenflips/cashout")
+
+                    if cashout_response.status_code == 200:
+                        cashout_data = cashout_response.json()
+                        cashout_amount = cashout_data.get("amountWon", 0)
+                        logger.info(f"<light-yellow>{self.session_name}</light-yellow> | ✅ <green>Won the bet</green> | Amount Won: {cashout_amount}")
+                    else:
+                        logger.error(f"<light-yellow>{self.session_name}</light-yellow> | 🚫 <red>Error</red> cashing out: {cashout_response.status_code}, {cashout_response.text}")
+
+                sleep_time = random.uniform(12 * 60 * 60, 24 * 60 * 60)
+                self.user_data["last_bet_time"] = datetime.utcnow().isoformat() + "Z"
+                self.user_data["bet_sleep_time"] = sleep_time
+
+                logger.info(f"<light-yellow>{self.session_name}</light-yellow> | ⏳ Sleeping for {sleep_time / 3600:.2f} hours before next token flip.")
+                await asyncio.sleep(sleep_time)
+
+        except Exception as e:
+            logger.error(f"<light-yellow>{self.session_name}</light-yellow> | 🚫 <red>Error</red> in TokenFlip | {e}")
 
     async def send_notification(self, message):
         admin = settings.ADMIN_TG_USER_ID if settings.ADMIN_TG_USER_ID != '' else None
@@ -1097,6 +1153,9 @@ class Tapper:
         if settings.AUTO_TAP:
             logger.info(f"<light-yellow>{self.session_name}</light-yellow> | 😋 Starting <green>AutoTapper...</green>")
             asyncio.create_task(self.clicker(proxy))
+
+        if settings.AUTO_TOKENFLIP:
+            asyncio.create_task(self.token_flip())
 
         if settings.AUTO_CLAIM_REF_REWARD:
             asyncio.create_task(self.claim_ref(proxy))

@@ -21,6 +21,8 @@ class Settings(BaseSettings):
 
     AUTO_CLAIM_REF_REWARD: bool = True
 
+    AUTO_TOKENFLIP: bool = False
+
     USE_RANDOM_DELAY_IN_RUN: bool = True
     RANDOM_DELAY_IN_RUN: list[int] = [5, 30]
 
