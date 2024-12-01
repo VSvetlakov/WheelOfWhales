@@ -1,9 +1,8 @@
 import json
-import asyncio
 import cloudscraper
 from bot.utils import logger
 from bot.config import settings
-from pathlib import Path
+from bot.connect.generator import proof
 
 async def get_payload(session_name, scraper):
     url = f"https://clicker-api.crashgame247.io/user/wallet/proof"
@@ -34,18 +33,8 @@ async def get_payload(session_name, scraper):
 
 async def generate_info(session_name, scraper):
     payload = await get_payload(session_name, scraper)
-    script_dir = Path(__file__).resolve().parent
-    generator_path = script_dir / 'generator.cjs'
-    process = await asyncio.create_subprocess_exec(
-        'node', str(generator_path), "https://clicker.crashgame247.io/", payload,
-        stdout=asyncio.subprocess.PIPE,
-        stderr=asyncio.subprocess.PIPE
-    )
-    stdout, stderr = await process.communicate()
-    if process.returncode != 0:
-        logger.error(f"<light-yellow>{session_name}</light-yellow> | 🚫 Generate Wallet Info <red>Error</red> occurred: {stderr.decode()}")
-        return None
-    result_json = json.loads(stdout.decode())
+    result = await proof("clicker.crashgame247.io", payload)
+    result_json = json.loads(result)
     return result_json
 
 async def connect_wallet(session_name, scraper):
@@ -64,8 +53,8 @@ async def connect_wallet(session_name, scraper):
             "proof": {
                 "timestamp": wallet_info['proof']['timestamp'],
                 "domain": {
-                    "lengthBytes": 23,
-                    "value": "clicker.crashgame247.io"
+                    "lengthBytes": wallet_info['proof']['domain']['lengthBytes'],
+                    "value": wallet_info['proof']['domain']['value']
                 },
                 "signature": wallet_info['proof']['signature'],
                 "payload": wallet_info['proof']['payload'],

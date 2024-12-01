@@ -25,7 +25,7 @@
 |**API_ID**|Platform data from which to run the Telegram session (default - android)|
 |**API_HASH**|Platform data from which to run the Telegram session (default - android)|
 |**AUTO_TAP**|Automatic clicking (default - True)|
-|**AUTO_CONNECT_WALLETS**|Automatic connection of TON wallets to accounts. Addresses and seed phrases are saved in connected_wallets.txt (requires Node.js) (default - False)|
+|**AUTO_CONNECT_WALLETS**|Automatic connection of TON wallets to accounts. Addresses and seed phrases are saved in connected_wallets.txt (default - False)|
 |**SCORE**|Score per game (default is [5, 30] (That is, 5 to 30))|
 |**SQUAD_NAME**|@username of the squad channel/chat without the '@' symbol|
 |**REF_ID**|Text after 'start=' in your referral link|
@@ -53,9 +53,6 @@ To quickly install the required libraries and run the bot:
 
 Make sure you have Python **3.10** installed.  
 Download Python [here](https://www.python.org/downloads/).
-
-Additionally, if you want to use the automatic connection of wallets, you need to install Node.js.
-Download Node.js [here](https://nodejs.org/en).
 
 ### Obtaining API Keys
 
@@ -93,9 +90,6 @@ pip3 install -r requirements.txt
 cp .env-example .env
 nano .env  # Here you must specify your API_ID and API_HASH, the rest is taken by default
 
-# If you want to use automatic wallet connection, install Node.js dependencies:
-npm install
-
 python3 main.py
 ```
 
@@ -116,9 +110,6 @@ venv\Scripts\activate
 pip install -r requirements.txt
 copy .env-example .env
 # Here you must specify your API_ID and API_HASH, the rest is taken by default
-
-# If you want to use automatic wallet connection, install Node.js dependencies:
-npm install
 
 python main.py
 ```
