@@ -15,6 +15,7 @@
 |AutoTapper|✅|
 |Automatic wheel spinning|✅|
 |AutoPlay games (Flappy and Dino)|✅|
+|Auto TokenFlip|✅|
 |AutoTasks|✅|
 |WebSockets|✅|
 |Support for pyrogram .session|✅|
@@ -31,6 +32,7 @@
 |**REF_ID**|Text after 'start=' in your referral link|
 |**AUTO_TASKS**|Automatically performs tasks (default - False)|
 |**AUTO_CLAIM_REF_REWARD**|Name saying itself (default - True)|
+|**AUTO_TOKENFLIP**|Automatic TokenFlip game every half-day to a day (random choice). (default - False)|
 |**USE_RANDOM_DELAY_IN_RUN**|Name saying itself (default - True)|
 |**RANDOM_DELAY_IN_RUN**|Random seconds delay for ^^^ (default is [5, 30])|
 |**NIGHT_MODE**|Pauses operations from 22:00 to 06:00 UTC (default - False)|
