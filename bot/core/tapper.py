@@ -1168,6 +1168,16 @@ class Tapper:
                     logger.error(f"<light-yellow>{self.session_name}</light-yellow> | 🚫 Last login data is <red>None</red> (please try restarting the bot)")
 
                 if datetime.now(timezone.utc) - last_login_time > timedelta(hours=24):
+                    while True:
+                        refresh = await self.refresh_tokens(proxy)
+                        
+                        if refresh is not None:
+                            token, wsToken, wsSubToken, id_for_ws = refresh
+                            self.scraper.headers.update({'Authorization': f'Bearer {token}'})
+                            break
+                        else:
+                            logger.warning(f"<light-yellow>{self.session_name}</light-yellow> | ⚠️ Could not retrieve all data, going to sleep 30s before the next attempt...")
+                            await asyncio.sleep(30)
                     await self.claim_daily_bonus()
 
                 logger.info(f"<light-yellow>{self.session_name}</light-yellow> | 😴 Going <cyan>sleep</cyan> 8h (This doesn't concern the AutoTapper)")
