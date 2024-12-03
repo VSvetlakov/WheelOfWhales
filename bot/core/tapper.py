@@ -1069,11 +1069,6 @@ class Tapper:
         logger.info(f"<light-yellow>{self.session_name}</light-yellow> | 💰 Balance: <yellow>{balance}</yellow> | ⚡️ Current streak: <cyan>{streak}</cyan>")
         self.scraper.headers["Authorization"] = f"Bearer {token}"
 
-        if not whitelisted:
-            logger.warning(f"<light-yellow>{self.session_name}</light-yellow> | 😔 You are <magenta>not whitelisted</magenta> :(")
-            logger.info(f"<light-yellow>{self.session_name}</light-yellow> | 😴 Going <cyan>sleep</cyan> 24h")
-            await asyncio.sleep(24 * 3600)
-
         if banned:
             logger.warning(f"<light-yellow>{self.session_name}</light-yellow> | 😨 You are <red>banned...</red>")
             self.user_data["banned"] = True
