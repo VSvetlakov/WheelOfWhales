@@ -825,41 +825,25 @@ class Tapper:
         logger.info(f"<light-yellow>{self.session_name}</light-yellow> | 🎉 Mission '{mission}' completed! (+{increment_score})")
 
     async def verify(self, task): 
-        retries = 5
-        attempt = 0
+        try:
+            sleep = random.randint(30, 60)
+            logger.info(f"<light-yellow>{self.session_name}</light-yellow> | ⏳ Waiting {sleep} seconds before verifying task '{task}'")
+            
+            await asyncio.sleep(sleep)
+            
+            url = f'{self.url}/meta/tasks/{task}'
 
-        while attempt < retries:
-            try:
-                sleep = random.randint(30, 60)
-                logger.info(f"<light-yellow>{self.session_name}</light-yellow> | ⏳ Waiting {sleep} seconds before verifying task '{task}'")
+            response = self.scraper.patch(url, json={})
+            resp_json = response.json()
 
-                await asyncio.sleep(sleep)
-                
-                url = f'{self.url}/meta/tasks/{task}'
-
-                response = self.scraper.patch(url, json={})
-                resp_json = response.json()
-
-                if response.status_code == 200:
-                    increment_score = resp_json.get('incrementScore', 'unknown')
-                    logger.info(f"<light-yellow>{self.session_name}</light-yellow> | 🥰 Task '{task}' <green>completed successfully.</green> <light-yellow>+{increment_score}</light-yellow>")
-                    break
-
-                elif response.status_code == 400:
-                    attempt += 1
-                    logger.warning(f"<light-yellow>{self.session_name}</light-yellow> | 😡 <red>Bad request (400)</red> for task '{task}'. Retrying {attempt}/{retries}.")
-                    
-                    if attempt == retries:
-                        logger.error(f"<light-yellow>{self.session_name}</light-yellow> | 😡 <red>Failed</red> to verify task '{task}' after {retries} attempts.")
-                        break
-
-                else:
-                    logger.error(f"<light-yellow>{self.session_name}</light-yellow> | 😡 <red>Failed</red> to verify task '{task}', status code: {response.status_code}")
-                    break
-
-            except Exception as error:
-                logger.error(f"<light-yellow>{self.session_name}</light-yellow> | 😡 <red>Error</red> verifying task '{task}': {error}")
-                break
+            if response.status_code == 200:
+                increment_score = resp_json.get('incrementScore', 'unknown')
+                logger.info(f"<light-yellow>{self.session_name}</light-yellow> | 🥰 Task '{task}' <green>completed successfully.</green> <light-yellow>+{increment_score}</light-yellow>")
+            else:
+                logger.error(f"<light-yellow>{self.session_name}</light-yellow> | 😡 <red>Failed</red> to verify task '{task}', status code: {response.status_code}")
+        
+        except Exception as error:
+            logger.error(f"<light-yellow>{self.session_name}</light-yellow> | 😡 <red>Error</red> verifying task '{task}': {error}")
 
     async def verify_code(self, code):
         try:
