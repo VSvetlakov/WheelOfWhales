@@ -310,20 +310,18 @@ class Tapper:
                 logger.debug(f"<light-yellow>{self.session_name}</light-yellow> | 🫡 Login Response: {resp_json}")
 
             token = resp_json.get("token")
-            whitelisted = resp_json.get("user", {}).get("whitelisted")
             banned = resp_json.get("user", {}).get("isBanned")
             balance = resp_json.get("balance", {}).get("amount")
             streak = resp_json.get("meta", {}).get("dailyLoginStreak")
             last_login = resp_json.get("meta", {}).get("lastFirstDailyLoginAt")
             referrer = resp_json.get("referrerUsername")
-            tribe = resp_json.get("user", {}).get("tribeId")
             tasks = resp_json.get("meta", {}).get("regularTasks")
             nanoid = resp_json.get("user", {}).get("nanoid")
             flappy_score = resp_json.get("meta", {}).get("flappyScore")
             dino_score = resp_json.get("meta", {}).get("dinoScore")
             wallet = resp_json.get("user", {}).get("walletAddress")
 
-            return (token, whitelisted, banned, balance, streak, last_login, referrer, tribe, tasks, nanoid, flappy_score, dino_score, wallet)
+            return (token, banned, balance, streak, last_login, referrer, tasks, nanoid, flappy_score, dino_score, wallet)
 
         except Exception as e:
             logger.error(f"<light-yellow>{self.session_name}</light-yellow> | 🚫 An unexpected <red>error</red> occurred: {str(e)}")
@@ -780,6 +778,7 @@ class Tapper:
 
         t = ts.get("tasks", {})
         s = ts.get("codes", {})
+        missions = ts.get("missions", {})
 
         methods = {
             "verify": self.verify
@@ -795,9 +794,39 @@ class Tapper:
             if task not in tasks or not tasks[task]:
                 await self.verify_code(code)
 
+        for mission, details in missions.items():
+            await self.mission(mission, details, tasks)
+
+    async def mission(self, mission, details, tasks):
+        if all(task in tasks and tasks[task] for task in details["required_tasks"]):
+            return
+
+        sleep = random.randint(30, 60)
+        logger.info(f"<light-yellow>{self.session_name}</light-yellow> | ⏳ Waiting {sleep} seconds before completing mission '{mission}'")
+        await asyncio.sleep(sleep)
+
+        for task in details["required_tasks"]:
+            resp = self.scraper.patch(f'{self.url}/meta/tasks/{task}', json={})
+            if resp.status_code != 200:
+                logger.error(f"<light-red>{self.session_name}</light-red> | ❌ Failed to uverify task '{task}' (Status: {resp.status_code})")
+                return
+            await asyncio.sleep(random.randint(8, 10))
+
+        await asyncio.sleep(3)
+
+        final_code = details["final_code"]
+        resp = self.scraper.patch(f'{self.url}/meta/tasks/{final_code}', json={})
+        if resp.status_code != 200:
+            logger.error(f"<light-red>{self.session_name}</light-red> | ❌ Failed to complete mission '{mission}' (Status: {resp.status_code})")
+            return
+
+        resp_json = resp.json()
+        increment_score = resp_json.get('incrementScore', 'unknown')
+        logger.info(f"<light-yellow>{self.session_name}</light-yellow> | 🎉 Mission '{mission}' completed! (+{increment_score})")
+
     async def verify(self, task): 
         try:
-            sleep = random.randint(10, 30)
+            sleep = random.randint(30, 60)
             logger.info(f"<light-yellow>{self.session_name}</light-yellow> | ⏳ Waiting {sleep} seconds before verifying task '{task}'")
             
             await asyncio.sleep(sleep)
@@ -1054,7 +1083,7 @@ class Tapper:
             login = await self.login(init_data=init_data)
 
             if login is not None:
-                token, whitelisted, banned, balance, streak, last_login, referrer, tribe, tasks, nanoid, flappy_score, dino_score, wallet = login
+                token, banned, balance, streak, last_login, referrer, tasks, nanoid, flappy_score, dino_score, wallet = login
                 self.user_data["balance"] = balance
                 self.user_data["streak"] = streak
                 self.user_data["acc_ref_id"] = nanoid

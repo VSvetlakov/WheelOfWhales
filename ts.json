@@ -24,7 +24,24 @@
         "TELEVERSE": "verify",
         "TON_TON": "verify",
         "KINGYRU": "verify",
-        "W_COIN": "verify"
+        "W_COIN": "verify",
+        "PIGGY": "verify",
+        "DROPEE": "verify",
+        "FRUIT_TON": "verify"
     },
-    "codes": {}
+    "codes": {},
+    "missions": {
+        "GATEIO": {
+            "required_tasks": ["GATEIO_X", "GATEIO_APP", "GATEIO_WALLET"],
+            "final_code": "GATEIO_MISSION"
+        },
+        "SWAPCOFEE": {
+            "required_tasks": ["SWAPCOFEE_APP", "SWAPCOFEE_CHANNEL", "SWAPCOFEE_X"],
+            "final_code": "SWAPCOFEE_MISSION"
+        },
+        "BAMBOO": {
+            "required_tasks": ["BAMBOO_SITE", "BAMBOO_X", "BAMBOO_TELEGRAM"],
+            "final_code": "BAMBOO_MISSION"
+        }
+    }
 }
