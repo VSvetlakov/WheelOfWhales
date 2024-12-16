@@ -834,6 +834,15 @@ class Tapper:
 
         final_code = details["final_code"]
         resp = self.scraper.patch(f'{self.url}/meta/tasks/{final_code}', json={})
+        
+        if resp.status_code == 400:
+            resp_json = resp.json()
+            if resp_json.get("message") == "Task already completed":
+                if 'completed_tasks' not in self.user_data:
+                    self.user_data['completed_tasks'] = []
+                self.user_data['completed_tasks'].append(mission)
+                return
+        
         if resp.status_code != 200:
             logger.error(f"<light-red>{self.session_name}</light-red> | ❌ Failed to complete mission '{mission}' (Status: {resp.status_code})")
             return
@@ -1090,11 +1099,7 @@ class Tapper:
     async def upgrade_empire(self, balance):
         try:
             MAX_LEVEL = 4
-            TARGET_LEVEL = settings.EMPIRE_LEVEL
-
-            if TARGET_LEVEL > MAX_LEVEL:
-                logger.warning(f"<light-yellow>{self.session_name}</light-yellow> | ⚠️ <yellow>Target level exceeds maximum allowed level</yellow> ({MAX_LEVEL}). Setting to {MAX_LEVEL}")
-                TARGET_LEVEL = MAX_LEVEL
+            TARGET_LEVEL = min(settings.EMPIRE_LEVEL - 1, MAX_LEVEL - 1)
 
             business_keys = {
                 "underground_card_games": "Underground Card Games",
@@ -1103,7 +1108,6 @@ class Tapper:
 
             while True:
                 businesses_response = self.scraper.get(f"{self.url}/passive/businesses")
-
                 if businesses_response.status_code != 200:
                     logger.error(f"<light-yellow>{self.session_name}</light-yellow> | 🚫 <red>Error fetching businesses</red>: {businesses_response.status_code}, {businesses_response.text}")
                     return False
@@ -1119,38 +1123,18 @@ class Tapper:
                     current_level = business.get("level", 0)
                     upgrade_end_time = business.get("upgradeEndTime", 0)
 
-                    ongoing_updates_response = self.scraper.get(f"{self.url}/passive/news")
-                    if ongoing_updates_response.status_code != 200:
-                        logger.error(f"<light-yellow>{self.session_name}</light-yellow> | 🚫 <red>Error fetching ongoing updates</red>: {ongoing_updates_response.status_code}, {ongoing_updates_response.text}")
-                        return False
-
-                    ongoing_data = ongoing_updates_response.json()
-                    upgrading_business = next((item for item in ongoing_data.get("ongoing", []) if item.get("key") == key and item.get("type") == "UPGRADING"), None)
-
-                    if upgrading_business:
-                        upgrade_end_time = upgrading_business.get("upgradeEndTime", 0)
-                        current_time = datetime.now(timezone.utc)
-                        wait_time = max(0, upgrade_end_time - int(current_time.timestamp())) + random.randint(10, 30)
-
-                        if wait_time > 0:
-                            minutes, seconds = divmod(wait_time, 60)
-                            wait_time_str = f"{seconds}s"
-                            if minutes > 0:
-                                wait_time_str = f"{minutes}m {wait_time_str}"
-
-                            logger.info(f"<light-yellow>{self.session_name}</light-yellow> | ⏳ <blue>Waiting</blue> {wait_time_str} for <blue>{business_keys[key]}</blue> upgrade to complete")
-                            await asyncio.sleep(wait_time)
-
-                        businesses_response = self.scraper.get(f"{self.url}/passive/businesses")
-                        if businesses_response.status_code != 200:
-                            logger.error(f"<light-yellow>{self.session_name}</light-yellow> | 🚫 <red>Error fetching businesses after waiting</red>: {businesses_response.status_code}, {businesses_response.text}")
-                            return False
-
-                        businesses_data = businesses_response.json()
-                        business = next((b for b in businesses_data if b.get("key") == key), None)
-                        current_level = business.get("level", 0)
-
                     if current_level >= TARGET_LEVEL:
+                        continue
+
+                    current_time = datetime.now(timezone.utc).timestamp()
+
+                    if upgrade_end_time > current_time:
+                        wait_time = max(0, upgrade_end_time - current_time) + random.randint(30, 60)
+                        minutes, seconds = divmod(int(wait_time), 60)
+                        wait_time_str = f"{minutes}m {seconds}s" if minutes > 0 else f"{seconds}s"
+                        logger.info(f"<light-yellow>{self.session_name}</light-yellow> | ⏳ <blue>Waiting</blue> {wait_time_str} for <blue>{business_keys[key]}</blue> upgrade to complete")
+                        await asyncio.sleep(wait_time)
+                        all_upgraded = False
                         continue
 
                     next_level = business.get("nextLevel", {})
@@ -1167,20 +1151,15 @@ class Tapper:
                         logger.error(f"<light-yellow>{self.session_name}</light-yellow> | 🚫 <red>Error upgrading</red> <blue>{business_keys[key]}</blue>: {upgrade_response.status_code}, {upgrade_response.text}")
                         return False
 
-                    upgrade_data = upgrade_response.json()
-                    business = upgrade_data.get("business", {})
-                    current_level = business.get("level", 0)
                     balance -= upgrade_cost
+                    logger.info(f"<light-yellow>{self.session_name}</light-yellow> | 🔼 <green>Upgraded</green> <blue>{business_keys[key]}</blue> to level <yellow>{current_level + 1}</yellow>. <red>Cost</red>: {upgrade_cost}. <green>Remaining balance</green>: {balance}")
 
-                    logger.info(f"<light-yellow>{self.session_name}</light-yellow> | 🔼 <green>Upgraded</green> <blue>{business_keys[key]}</blue> to level <yellow>{current_level}</yellow>. <red>Cost</red>: {upgrade_cost}. <green>Remaining balance</green>: {balance}")
-
-                    if current_level >= TARGET_LEVEL:
-                        logger.info(f"<light-yellow>{self.session_name}</light-yellow> | 🏆 <green>{business_keys[key]} reached target level {TARGET_LEVEL}</green>")
-                        break
+                    all_upgraded = False
 
                 if all_upgraded:
                     break
 
+            logger.info(f"<light-yellow>{self.session_name}</light-yellow> | 🏆 <green>All businesses upgraded to target level {TARGET_LEVEL + 1}</green>")
             self.user_data["upgraded_empire"] = True
             return True
 
