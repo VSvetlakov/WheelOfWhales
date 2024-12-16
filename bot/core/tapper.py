@@ -1209,7 +1209,7 @@ class Tapper:
 
                         if wait_time > 0:
                             logger.info(f"<light-yellow>{self.session_name}</light-yellow> | ⏳ <blue>Waiting</blue> {wait_time_str} to claim <blue>{key}</blue>")
-                            await asyncio.sleep(wait_time)
+                            await asyncio.sleep(wait_time+60)
 
                         claim_payload = {"key": key}
                         claim_response = self.scraper.post(f"{self.url}/passive/businesses/claim", json=claim_payload)
