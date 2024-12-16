@@ -785,19 +785,20 @@ class Tapper:
         }
 
         for task, method_name in t.items():
-            if task not in tasks or not tasks[task] or task in self.user_data.get('completed_tasks', []):
+            if (task in tasks and tasks[task]) or task in self.user_data.get('completed_tasks', []):
                 continue
             method = methods.get(method_name)
             if method:
                 await method(task)
 
         for task, code in s.items():
-            if task not in tasks or not tasks[task] or task in self.user_data.get('completed_tasks', []):
+            if (task in tasks and tasks[task]) or task in self.user_data.get('completed_tasks', []):
                 continue
             await self.verify_code(code)
 
         for mission, details in missions.items():
-            if all(task in tasks and tasks[task] for task in details["required_tasks"]) and not any(task in self.user_data.get('completed_tasks', []) for task in details["required_tasks"]):
+            if all(task in tasks and tasks[task] for task in details["required_tasks"]) or \
+            any(task in self.user_data.get('completed_tasks', []) for task in details["required_tasks"]):
                 continue
             await self.mission(mission, details, tasks)
 
