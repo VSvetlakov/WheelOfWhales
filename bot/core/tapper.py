@@ -815,9 +815,19 @@ class Tapper:
                 continue
 
             resp = self.scraper.patch(f'{self.url}/meta/tasks/{task}', json={})
+            
+            if resp.status_code == 400:
+                resp_json = resp.json()
+                if resp_json.get("message") == "Task already completed":
+                    if 'completed_tasks' not in self.user_data:
+                        self.user_data['completed_tasks'] = []
+                    self.user_data['completed_tasks'].append(task)
+                    continue
+            
             if resp.status_code != 200:
                 logger.error(f"<light-red>{self.session_name}</light-red> | ❌ Failed to verify task '{task}' (Status: {resp.status_code})")
                 return
+            
             await asyncio.sleep(random.randint(8, 10))
 
         await asyncio.sleep(3)
