@@ -1075,7 +1075,10 @@ class Tapper:
 
             businesses_data = businesses_response.json()
 
-            business_keys = ["underground_card_games", "slot_machines"]
+            business_keys = {
+                "underground_card_games": "Underground Card Games",
+                "slot_machines": "Slot Machines"
+            }
 
             for business in businesses_data:
                 key = business.get("key")
@@ -1086,7 +1089,7 @@ class Tapper:
                 upgrade_end_time = business.get("upgradeEndTime", 0)
 
                 if current_level >= TARGET_LEVEL:
-                    logger.info(f"<light-blue>{self.session_name}</light-blue> | ✅ <green>{key}</green> is already at target level {TARGET_LEVEL}")
+                    logger.info(f"<light-blue>{self.session_name}</light-blue> | ✅ <green>{business_keys[key]}</green> is already at target level {TARGET_LEVEL}")
                     continue
 
                 while current_level < TARGET_LEVEL:
@@ -1097,11 +1100,17 @@ class Tapper:
                     businesses_data = businesses_response.json()
                     business = next((b for b in businesses_data if b.get("key") == key), {})
                     
+                    current_level = business.get("level", 0)
+                    if current_level >= TARGET_LEVEL:
+                        logger.info(f"<light-blue>{self.session_name}</light-blue> | ✅ <green>{business_keys[key]}</green> is already at target level {TARGET_LEVEL}")
+                        break
+
                     next_level = business.get("nextLevel", {})
                     upgrade_cost = next_level.get("upgradeCost", 0)
+                    upgrade_end_time = business.get("upgradeEndTime", 0)
 
                     if balance < upgrade_cost:
-                        logger.warning(f"<light-yellow>{self.session_name}</light-yellow> | ⚠️ <red>Insufficient balance</red> ({balance}) for next upgrade of <blue>{key}</blue>. Required: {upgrade_cost}")
+                        logger.warning(f"<light-yellow>{self.session_name}</light-yellow> | ⚠️ <red>Insufficient balance</red> ({balance}) for next upgrade of <blue>{business_keys[key]}</blue>. Required: {upgrade_cost}")
                         return False
 
                     current_time = datetime.now(timezone.utc)
@@ -1113,27 +1122,26 @@ class Tapper:
                         wait_time_str = f"{minutes}m {wait_time_str}"
 
                     if wait_time > 0:
-                        logger.info(f"<light-yellow>{self.session_name}</light-yellow> | ⏳ <blue>Waiting</blue> {wait_time_str} for <blue>{key}</blue> upgrade to complete")
+                        logger.info(f"<light-yellow>{self.session_name}</light-yellow> | ⏳ <blue>Waiting</blue> {wait_time_str} for <blue>{business_keys[key]}</blue> upgrade to complete")
                         await asyncio.sleep(wait_time)
 
                     upgrade_payload = {"key": key}
                     upgrade_response = self.scraper.post(f"{self.url}/passive/businesses/upgrade", json=upgrade_payload)
 
                     if upgrade_response.status_code != 200:
-                        logger.error(f"<light-yellow>{self.session_name}</light-yellow> | 🚫 <red>Error upgrading</red> <blue>{key}</blue>: {upgrade_response.status_code}, {upgrade_response.text}")
+                        logger.error(f"<light-yellow>{self.session_name}</light-yellow> | 🚫 <red>Error upgrading</red> <blue>{business_keys[key]}</blue>: {upgrade_response.status_code}, {upgrade_response.text}")
                         return False
 
                     upgrade_data = upgrade_response.json()
                     business = upgrade_data.get("business", {})
-
                     current_level = business.get("level", 0)
                     upgrade_end_time = business.get("upgradeEndTime", 0)
                     balance -= upgrade_cost
 
-                    logger.info(f"<light-yellow>{self.session_name}</light-yellow> | 🔼 <green>Upgraded</green> <blue>{key}</blue> to level <yellow>{current_level}</yellow>. <red>Cost</red>: {upgrade_cost}. <green>Remaining balance</green>: {balance}")
+                    logger.info(f"<light-yellow>{self.session_name}</light-yellow> | 🔼 <green>Upgraded</green> <blue>{business_keys[key]}</blue> to level <yellow>{current_level}</yellow>. <red>Cost</red>: {upgrade_cost}. <green>Remaining balance</green>: {balance}")
 
                     if current_level >= TARGET_LEVEL:
-                        logger.info(f"<light-yellow>{self.session_name}</light-yellow> | 🏆 <green>{key} reached target level {TARGET_LEVEL}</green>")
+                        logger.info(f"<light-yellow>{self.session_name}</light-yellow> | 🏆 <green>{business_keys[key]} reached target level {TARGET_LEVEL}</green>")
                         break
 
             self.user_data["upgraded_empire"] = True
