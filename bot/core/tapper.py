@@ -840,7 +840,7 @@ class Tapper:
                 increment_score = resp_json.get('incrementScore', 'unknown')
                 logger.info(f"<light-yellow>{self.session_name}</light-yellow> | 🥰 Task '{task}' <green>completed successfully.</green> <light-yellow>+{increment_score}</light-yellow>")
             else:
-                logger.error(f"<light-yellow>{self.session_name}</light-yellow> | 😡 <red>Failed</red> to verify task '{task}', status code: {response.status_code}")
+                logger.error(f"<light-yellow>{self.session_name}</light-yellow> | 😡 <red>Failed</red> to verify task '{task}', status code: {response.status_code}, {response.text}")
         
         except Exception as error:
             logger.error(f"<light-yellow>{self.session_name}</light-yellow> | 😡 <red>Error</red> verifying task '{task}': {error}")
@@ -1061,7 +1061,7 @@ class Tapper:
     async def upgrade_empire(self, balance):
         try:
             MAX_LEVEL = 4
-            TARGET_LEVEL = settings.EMPIRE_LEVEL
+            TARGET_LEVEL = self.settings.EMPIRE_LEVEL
 
             if TARGET_LEVEL > MAX_LEVEL:
                 logger.warning(f"<light-yellow>{self.session_name}</light-yellow> | ⚠️ <yellow>Target level exceeds maximum allowed level</yellow> ({MAX_LEVEL}). Setting to {MAX_LEVEL}")
@@ -1090,6 +1090,13 @@ class Tapper:
                     continue
 
                 while current_level < TARGET_LEVEL:
+                    businesses_response = self.scraper.get(f"{self.url}/passive/businesses")
+                    if businesses_response.status_code != 200:
+                        logger.error(f"<light-yellow>{self.session_name}</light-yellow> | 🚫 <red>Error fetching businesses</red>: {businesses_response.status_code}, {businesses_response.text}")
+                        return False
+                    businesses_data = businesses_response.json()
+                    business = next((b for b in businesses_data if b.get("key") == key), {})
+                    
                     next_level = business.get("nextLevel", {})
                     upgrade_cost = next_level.get("upgradeCost", 0)
 
@@ -1099,10 +1106,14 @@ class Tapper:
 
                     current_time = datetime.now(timezone.utc)
                     wait_time = max(0, upgrade_end_time - int(current_time.timestamp())) + random.randint(10, 30)
+
                     minutes, seconds = divmod(wait_time, 60)
+                    wait_time_str = f"{seconds}s"
+                    if minutes > 0:
+                        wait_time_str = f"{minutes}m {wait_time_str}"
 
                     if wait_time > 0:
-                        logger.info(f"<light-yellow>{self.session_name}</light-yellow> | ⏳ <blue>Waiting</blue> {minutes}m {seconds}s for <blue>{key}</blue> upgrade to complete")
+                        logger.info(f"<light-yellow>{self.session_name}</light-yellow> | ⏳ <blue>Waiting</blue> {wait_time_str} for <blue>{key}</blue> upgrade to complete")
                         await asyncio.sleep(wait_time)
 
                     upgrade_payload = {"key": key}
@@ -1166,10 +1177,14 @@ class Tapper:
 
                         current_time = datetime.now(timezone.utc).timestamp()
                         wait_time = max(0, claim_end_time - current_time) + random.randint(30, 60)
+
                         minutes, seconds = divmod(wait_time, 60)
+                        wait_time_str = f"{seconds}s"
+                        if minutes > 0:
+                            wait_time_str = f"{minutes}m {wait_time_str}"
 
                         if wait_time > 0:
-                            logger.info(f"<light-yellow>{self.session_name}</light-yellow> | ⏳ <blue>Waiting</blue> {minutes}m {seconds}s to claim <blue>{key}</blue>")
+                            logger.info(f"<light-yellow>{self.session_name}</light-yellow> | ⏳ <blue>Waiting</blue> {wait_time_str} to claim <blue>{key}</blue>")
                             await asyncio.sleep(wait_time)
 
                         claim_payload = {"key": key}
