@@ -785,14 +785,14 @@ class Tapper:
         }
 
         for task, method_name in t.items():
-            if task not in tasks or not tasks[task] or task in self.user_data['completed_tasks']:
+            if task not in tasks or not tasks[task] or task in self.user_data.get('completed_tasks', []):
                 continue
             method = methods.get(method_name)
             if method:
                 await method(task)
 
         for task, code in s.items():
-            if task not in tasks or not tasks[task] or task in self.user_data['completed_tasks']:
+            if task not in tasks or not tasks[task] or task in self.user_data.get('completed_tasks', []):
                 continue
             await self.verify_code(code)
 
@@ -800,7 +800,7 @@ class Tapper:
             await self.mission(mission, details, tasks)
 
     async def mission(self, mission, details, tasks):
-        if all(task in tasks and tasks[task] for task in details["required_tasks"]):
+        if all(task in tasks and tasks[task] for task in details["required_tasks"]) and not any(task in self.user_data.get('completed_tasks', []) for task in details["required_tasks"]):
             return
 
         sleep = random.randint(30, 60)
@@ -808,9 +808,12 @@ class Tapper:
         await asyncio.sleep(sleep)
 
         for task in details["required_tasks"]:
+            if task in self.user_data.get('completed_tasks', []):
+                continue
+
             resp = self.scraper.patch(f'{self.url}/meta/tasks/{task}', json={})
             if resp.status_code != 200:
-                logger.error(f"<light-red>{self.session_name}</light-red> | ❌ Failed to uverify task '{task}' (Status: {resp.status_code})")
+                logger.error(f"<light-red>{self.session_name}</light-red> | ❌ Failed to verify task '{task}' (Status: {resp.status_code})")
                 return
             await asyncio.sleep(random.randint(8, 10))
 
@@ -826,6 +829,10 @@ class Tapper:
         increment_score = resp_json.get('incrementScore', 'unknown')
         logger.info(f"<light-yellow>{self.session_name}</light-yellow> | 🎉 Mission '{mission}' completed! (+{increment_score})")
 
+        if 'completed_tasks' not in self.user_data:
+            self.user_data['completed_tasks'] = []
+        self.user_data['completed_tasks'].append(mission)
+
     async def verify(self, task):
         try:
             sleep = random.randint(30, 60)
@@ -833,7 +840,7 @@ class Tapper:
             
             await asyncio.sleep(sleep)
             
-            if task in self.user_data['completed_tasks']:
+            if task in self.user_data.get('completed_tasks', []):
                 return
 
             url = f'{self.url}/meta/tasks/{task}'
@@ -845,6 +852,8 @@ class Tapper:
                 increment_score = resp_json.get('incrementScore', 'unknown')
                 logger.info(f"<light-yellow>{self.session_name}</light-yellow> | 🥰 Task '{task}' <green>completed successfully.</green> <light-yellow>+{increment_score}</light-yellow>")
             elif response.status_code == 400 and resp_json.get("message") == "Task already completed":
+                if 'completed_tasks' not in self.user_data:
+                    self.user_data['completed_tasks'] = []
                 self.user_data['completed_tasks'].append(task)
             else:
                 logger.error(f"<light-yellow>{self.session_name}</light-yellow> | 😡 <red>Failed</red> to verify task '{task}', status code: {response.status_code}, {response.text}")
