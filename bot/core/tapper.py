@@ -1152,7 +1152,7 @@ class Tapper:
                         return False
 
                     balance -= upgrade_cost
-                    logger.info(f"<light-yellow>{self.session_name}</light-yellow> | 🔼 <green>Upgraded</green> <blue>{business_keys[key]}</blue> to level <yellow>{current_level + 1}</yellow>. <red>Cost</red>: {upgrade_cost}. <green>Remaining balance</green>: {balance}")
+                    logger.info(f"<light-yellow>{self.session_name}</light-yellow> | 🔼 <green>Upgraded</green> <blue>{business_keys[key]}</blue> to level <yellow>{current_level + 2}</yellow>. <red>Cost</red>: {upgrade_cost}. <green>Remaining balance</green>: {balance}")
 
                     all_upgraded = False
 
