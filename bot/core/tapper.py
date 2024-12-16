@@ -1122,7 +1122,6 @@ class Tapper:
                         current_level = business.get("level", 0)
 
                     if current_level >= TARGET_LEVEL:
-                        logger.info(f"<light-blue>{self.session_name}</light-blue> | ✅ <green>{business_keys[key]}</green> is already at target level {TARGET_LEVEL}")
                         continue
 
                     next_level = business.get("nextLevel", {})
@@ -1154,7 +1153,6 @@ class Tapper:
                     break
 
             self.user_data["upgraded_empire"] = True
-            logger.info(f"<light-yellow>{self.session_name}</light-yellow> | 🏆 <green>Empire upgrades completed!</green>")
             return True
 
         except Exception as e:
