@@ -1191,7 +1191,7 @@ class Tapper:
                         claim_end_time = task.get("claimEndTime", 0)
 
                         current_time = datetime.now(timezone.utc).timestamp()
-                        wait_time = max(0, claim_end_time - current_time) + random.randint(30, 60)
+                        wait_time = max(0, claim_end_time - current_time) + random.randint(120, 300)
 
                         minutes, seconds = divmod(wait_time, 60)
                         wait_time_str = f"{seconds}s"
@@ -1211,7 +1211,7 @@ class Tapper:
                         else:
                             logger.error(f"<light-yellow>{self.session_name}</light-yellow> | 🚫 <red>Error claiming</red> <blue>{key}</blue>: {claim_response.status_code}, {claim_response.text}")
 
-                await asyncio.sleep(60)
+                await asyncio.sleep(100)
 
         except Exception as e:
             logger.error(f"<light-yellow>{self.session_name}</light-yellow> | 🚫 <red>Error</red> in ClaimEmpire function | {e}")
