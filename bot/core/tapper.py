@@ -785,14 +785,16 @@ class Tapper:
         }
 
         for task, method_name in t.items():
-            if task not in tasks or not tasks[task]:
-                method = methods.get(method_name)
-                if method:
-                    await method(task)
+            if task not in tasks or not tasks[task] or task in self.user_data['completed_tasks']:
+                continue
+            method = methods.get(method_name)
+            if method:
+                await method(task)
 
         for task, code in s.items():
-            if task not in tasks or not tasks[task]:
-                await self.verify_code(code)
+            if task not in tasks or not tasks[task] or task in self.user_data['completed_tasks']:
+                continue
+            await self.verify_code(code)
 
         for mission, details in missions.items():
             await self.mission(mission, details, tasks)
@@ -824,13 +826,16 @@ class Tapper:
         increment_score = resp_json.get('incrementScore', 'unknown')
         logger.info(f"<light-yellow>{self.session_name}</light-yellow> | 🎉 Mission '{mission}' completed! (+{increment_score})")
 
-    async def verify(self, task): 
+    async def verify(self, task):
         try:
             sleep = random.randint(30, 60)
             logger.info(f"<light-yellow>{self.session_name}</light-yellow> | ⏳ Waiting {sleep} seconds before verifying task '{task}'")
             
             await asyncio.sleep(sleep)
             
+            if task in self.user_data['completed_tasks']:
+                return
+
             url = f'{self.url}/meta/tasks/{task}'
 
             response = self.scraper.patch(url, json={})
@@ -839,6 +844,8 @@ class Tapper:
             if response.status_code == 200:
                 increment_score = resp_json.get('incrementScore', 'unknown')
                 logger.info(f"<light-yellow>{self.session_name}</light-yellow> | 🥰 Task '{task}' <green>completed successfully.</green> <light-yellow>+{increment_score}</light-yellow>")
+            elif response.status_code == 400 and resp_json.get("message") == "Task already completed":
+                self.user_data['completed_tasks'].append(task)
             else:
                 logger.error(f"<light-yellow>{self.session_name}</light-yellow> | 😡 <red>Failed</red> to verify task '{task}', status code: {response.status_code}, {response.text}")
         
