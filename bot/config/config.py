@@ -23,6 +23,10 @@ class Settings(BaseSettings):
 
     AUTO_TOKENFLIP: bool = False
 
+    AUTO_EMPIRE: bool = True
+
+    EMPIRE_LEVEL: int = 1
+
     USE_RANDOM_DELAY_IN_RUN: bool = True
     RANDOM_DELAY_IN_RUN: list[int] = [5, 30]
 

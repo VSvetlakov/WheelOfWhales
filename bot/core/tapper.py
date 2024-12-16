@@ -1058,6 +1058,133 @@ class Tapper:
             except Exception as e:
                 logger.error(f'<light-yellow>{self.session_name}</light-yellow> | ❌ Error sending notification: {e}')
 
+    async def upgrade_empire(self, balance):
+        try:
+            MAX_LEVEL = 4
+            TARGET_LEVEL = settings.EMPIRE_LEVEL
+
+            if TARGET_LEVEL > MAX_LEVEL:
+                logger.warning(f"<light-yellow>{self.session_name}</light-yellow> | ⚠️ <yellow>Target level exceeds maximum allowed level</yellow> ({MAX_LEVEL}). Setting to {MAX_LEVEL}")
+                TARGET_LEVEL = MAX_LEVEL
+
+            businesses_response = self.scraper.get(f"{self.url}/passive/businesses")
+
+            if businesses_response.status_code != 200:
+                logger.error(f"<light-yellow>{self.session_name}</light-yellow> | 🚫 <red>Error fetching businesses</red>: {businesses_response.status_code}, {businesses_response.text}")
+                return False
+
+            businesses_data = businesses_response.json()
+
+            business_keys = ["underground_card_games", "slot_machines"]
+
+            for business in businesses_data:
+                key = business.get("key")
+                if key not in business_keys:
+                    continue
+
+                current_level = business.get("level", 0)
+                upgrade_end_time = business.get("upgradeEndTime", 0)
+
+                if current_level >= TARGET_LEVEL:
+                    logger.info(f"<light-blue>{self.session_name}</light-blue> | ✅ <green>{key}</green> is already at target level {TARGET_LEVEL}")
+                    continue
+
+                while current_level < TARGET_LEVEL:
+                    next_level = business.get("nextLevel", {})
+                    upgrade_cost = next_level.get("upgradeCost", 0)
+
+                    if balance < upgrade_cost:
+                        logger.warning(f"<light-yellow>{self.session_name}</light-yellow> | ⚠️ <red>Insufficient balance</red> ({balance}) for next upgrade of <blue>{key}</blue>. Required: {upgrade_cost}")
+                        return False
+
+                    current_time = datetime.now(timezone.utc)
+                    wait_time = max(0, upgrade_end_time - int(current_time.timestamp())) + random.randint(10, 30)
+                    minutes, seconds = divmod(wait_time, 60)
+
+                    if wait_time > 0:
+                        logger.info(f"<light-yellow>{self.session_name}</light-yellow> | ⏳ <blue>Waiting</blue> {minutes}m {seconds}s for <blue>{key}</blue> upgrade to complete")
+                        await asyncio.sleep(wait_time)
+
+                    upgrade_payload = {"key": key}
+                    upgrade_response = self.scraper.post(f"{self.url}/passive/businesses/upgrade", json=upgrade_payload)
+
+                    if upgrade_response.status_code != 200:
+                        logger.error(f"<light-yellow>{self.session_name}</light-yellow> | 🚫 <red>Error upgrading</red> <blue>{key}</blue>: {upgrade_response.status_code}, {upgrade_response.text}")
+                        return False
+
+                    upgrade_data = upgrade_response.json()
+                    business = upgrade_data.get("business", {})
+
+                    current_level = business.get("level", 0)
+                    upgrade_end_time = business.get("upgradeEndTime", 0)
+                    balance -= upgrade_cost
+
+                    logger.info(f"<light-yellow>{self.session_name}</light-yellow> | 🔼 <green>Upgraded</green> <blue>{key}</blue> to level <yellow>{current_level}</yellow>. <red>Cost</red>: {upgrade_cost}. <green>Remaining balance</green>: {balance}")
+
+                    if current_level >= TARGET_LEVEL:
+                        logger.info(f"<light-yellow>{self.session_name}</light-yellow> | 🏆 <green>{key} reached target level {TARGET_LEVEL}</green>")
+                        break
+
+            self.user_data["upgraded_empire"] = True
+            logger.info(f"<light-yellow>{self.session_name}</light-yellow> | 🏆 <green>Empire upgrades completed!</green>")
+            return True
+
+        except Exception as e:
+            logger.error(f"<light-yellow>{self.session_name}</light-yellow> | 🚫 <red>Error</red> in Empire function | {e}")
+            return False
+
+    async def claim_empire(self):
+        try:
+            while True:
+                news_response = self.scraper.get(f"{self.url}/passive/news")
+
+                if news_response.status_code != 200:
+                    logger.error(f"<light-yellow>{self.session_name}</light-yellow> | 🚫 <red>Error fetching news</red>: {news_response.status_code}, {news_response.text}")
+                    await asyncio.sleep(60)
+                    continue
+
+                news_data = news_response.json()
+                updates = news_data.get("updates", [])
+                ongoing = news_data.get("ongoing", [])
+
+                for update in updates:
+                    if update.get("type") == "CLAIM":
+                        key = update.get("key")
+                        claim_payload = {"key": key}
+                        claim_response = self.scraper.post(f"{self.url}/passive/businesses/claim", json=claim_payload)
+
+                        if claim_response.status_code == 200:
+                            income = update.get("income", 0)
+                            logger.info(f"<light-yellow>{self.session_name}</light-yellow> | 💰 <green>Claimed</green> <yellow>{income}</yellow> from <blue>{key}</blue>")
+                        else:
+                            logger.error(f"<light-yellow>{self.session_name}</light-yellow> | 🚫 <red>Error claiming</red> <blue>{key}</blue>: {claim_response.status_code}, {claim_response.text}")
+
+                for task in ongoing:
+                    if task.get("type") == "CLAIMING":
+                        key = task.get("key")
+                        claim_end_time = task.get("claimEndTime", 0)
+
+                        current_time = datetime.now(timezone.utc).timestamp()
+                        wait_time = max(0, claim_end_time - current_time) + random.randint(30, 60)
+                        minutes, seconds = divmod(wait_time, 60)
+
+                        if wait_time > 0:
+                            logger.info(f"<light-yellow>{self.session_name}</light-yellow> | ⏳ <blue>Waiting</blue> {minutes}m {seconds}s to claim <blue>{key}</blue>")
+                            await asyncio.sleep(wait_time)
+
+                        claim_payload = {"key": key}
+                        claim_response = self.scraper.post(f"{self.url}/passive/businesses/claim", json=claim_payload)
+
+                        if claim_response.status_code == 200:
+                            logger.info(f"<light-yellow>{self.session_name}</light-yellow> | 💰 <green>Successfully claimed</green> from <blue>{key}</blue>")
+                        else:
+                            logger.error(f"<light-yellow>{self.session_name}</light-yellow> | 🚫 <red>Error claiming</red> <blue>{key}</blue>: {claim_response.status_code}, {claim_response.text}")
+
+                await asyncio.sleep(60)
+
+        except Exception as e:
+            logger.error(f"<light-yellow>{self.session_name}</light-yellow> | 🚫 <red>Error</red> in ClaimEmpire function | {e}")
+
     async def run(self, proxy: str | None) -> None:
         if settings.USE_RANDOM_DELAY_IN_RUN:
             random_delay = random.randint(settings.RANDOM_DELAY_IN_RUN[0], settings.RANDOM_DELAY_IN_RUN[1])
@@ -1183,6 +1310,11 @@ class Tapper:
 
         if settings.AUTO_CLAIM_REF_REWARD:
             asyncio.create_task(self.claim_ref(proxy))
+
+        if settings.AUTO_EMPIRE:
+            upgrade = await self.upgrade_empire(balance)
+            if upgrade:
+                asyncio.create_task(self.claim_empire())
 
         while True:
             try:
