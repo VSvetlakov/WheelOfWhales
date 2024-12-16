@@ -1061,7 +1061,7 @@ class Tapper:
     async def upgrade_empire(self, balance):
         try:
             MAX_LEVEL = 4
-            TARGET_LEVEL = self.settings.EMPIRE_LEVEL
+            TARGET_LEVEL = settings.EMPIRE_LEVEL
 
             if TARGET_LEVEL > MAX_LEVEL:
                 logger.warning(f"<light-yellow>{self.session_name}</light-yellow> | ⚠️ <yellow>Target level exceeds maximum allowed level</yellow> ({MAX_LEVEL}). Setting to {MAX_LEVEL}")
