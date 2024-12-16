@@ -797,6 +797,8 @@ class Tapper:
             await self.verify_code(code)
 
         for mission, details in missions.items():
+            if all(task in tasks and tasks[task] for task in details["required_tasks"]) and not any(task in self.user_data.get('completed_tasks', []) for task in details["required_tasks"]):
+                continue
             await self.mission(mission, details, tasks)
 
     async def mission(self, mission, details, tasks):
