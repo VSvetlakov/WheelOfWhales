@@ -1179,7 +1179,6 @@ class Tapper:
 
                 news_data = news_response.json()
                 updates = news_data.get("updates", [])
-                ongoing = news_data.get("ongoing", [])
 
                 for update in updates:
                     if update.get("type") == "CLAIM":
@@ -1193,33 +1192,7 @@ class Tapper:
                         else:
                             logger.error(f"<light-yellow>{self.session_name}</light-yellow> | 🚫 <red>Error claiming</red> <blue>{key}</blue>: {claim_response.status_code}, {claim_response.text}")
 
-                for task in ongoing:
-                    if task.get("type") == "CLAIMING":
-                        key = task.get("key")
-                        claim_end_time = task.get("claimEndTime", 0)
-
-                        current_time = datetime.now(timezone.utc).timestamp()
-                        wait_time = max(0, claim_end_time - current_time) + random.randint(120, 300)
-
-                        minutes, seconds = divmod(wait_time, 60)
-                        wait_time_str = f"{seconds}s"
-                        if minutes > 0:
-                            rounded_seconds = round(seconds)
-                            wait_time_str = f"{int(minutes)}m {rounded_seconds}s"
-
-                        if wait_time > 0:
-                            logger.info(f"<light-yellow>{self.session_name}</light-yellow> | ⏳ <blue>Waiting</blue> {wait_time_str} to claim <blue>{key}</blue>")
-                            await asyncio.sleep(wait_time+60)
-
-                        claim_payload = {"key": key}
-                        claim_response = self.scraper.post(f"{self.url}/passive/businesses/claim", json=claim_payload)
-
-                        if claim_response.status_code == 200:
-                            logger.info(f"<light-yellow>{self.session_name}</light-yellow> | 💰 <green>Successfully claimed</green> from <blue>{key}</blue>")
-                        else:
-                            logger.error(f"<light-yellow>{self.session_name}</light-yellow> | 🚫 <red>Error claiming</red> <blue>{key}</blue>: {claim_response.status_code}, {claim_response.text}")
-
-                await asyncio.sleep(100)
+                await asyncio.sleep(random.randint(30, 50) * 60)
 
         except Exception as e:
             logger.error(f"<light-yellow>{self.session_name}</light-yellow> | 🚫 <red>Error</red> in ClaimEmpire function | {e}")
