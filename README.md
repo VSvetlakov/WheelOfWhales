@@ -15,6 +15,7 @@
 |AutoTapper|✅|
 |Automatic wheel spinning|✅|
 |AutoPlay games (Flappy and Dino)|✅|
+|Auto Empire|✅|
 |Auto TokenFlip|✅|
 |AutoTasks|✅|
 |WebSockets|✅|
@@ -30,9 +31,11 @@
 |**SCORE**|Score per game (default is [5, 30] (That is, 5 to 30))|
 |**SQUAD_NAME**|@username of the squad channel/chat without the '@' symbol|
 |**REF_ID**|Text after 'start=' in your referral link|
-|**AUTO_TASKS**|Automatically performs tasks (default - False)|
+|**AUTO_TASKS**|Automatically performs tasks (default - True)|
 |**AUTO_CLAIM_REF_REWARD**|Name saying itself (default - True)|
 |**AUTO_TOKENFLIP**|Automatic TokenFlip game every half-day to a day (random choice). (default - False)|
+|**AUTO_EMPIRE**|Automatic empire. LevelUP Underground Card Games and Slot Machines, and auto claiming empire rewards (default - True)|
+|**EMPIRE_LEVEL**|Empire level to upgrade, max 4 (default - 1)|
 |**USE_RANDOM_DELAY_IN_RUN**|Name saying itself (default - True)|
 |**RANDOM_DELAY_IN_RUN**|Random seconds delay for ^^^ (default is [5, 30])|
 |**NIGHT_MODE**|Pauses operations from 22:00 to 06:00 UTC (default - False)|
