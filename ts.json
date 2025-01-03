@@ -1,7 +1,6 @@
 {
     "tasks": {
         "FOLLOW_WHALE_EN": "verify",
-        "FOLLOW_WHEEL_OF_WHALES": "verify",
         "FOLLOW_TON_NEWS": "verify",
         "FOLLOW_WHALE_SPORTS": "verify",
         "FOLLOW_WHALE_DISCORD": "verify",
@@ -22,12 +21,9 @@
         "STORM_BOT": "verify",
         "CRYP": "verify",
         "TELEVERSE": "verify",
-        "TON_TON": "verify",
         "KINGYRU": "verify",
         "W_COIN": "verify",
-        "PIGGY": "verify",
-        "DROPEE": "verify",
-        "FRUIT_TON": "verify"
+        "DROPEE": "verify"
     },
     "codes": {},
     "missions": {
